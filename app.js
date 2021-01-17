@@ -4,6 +4,9 @@ const axios = require('axios')
 
 const config = require('./config/config')
 
+console.log(config)
+console.log(process.env.NODE_ENV)
+
 const studentRouter = require('./routes/students')
 const supervisorRouter = require('./routes/supervisors')
 const coordinatorRouter = require('./routes/coordinators')
@@ -25,7 +28,7 @@ const options = {
   loggingNoPII: false
 }
 
-var bearerStrategy = new BearerStrategy(options, function (token, done) {
+let bearerStrategy = new BearerStrategy(options, function (token, done) {
   done(null, {}, token)
 })
 

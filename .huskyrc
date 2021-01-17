@@ -1,5 +1,5 @@
 {
   "hooks": {
-    "pre-commit": "prettier --write . && git add ."
+    "pre-commit": "prettier --write . && git add . && npm test"
   }
 }
