@@ -4,6 +4,9 @@ const axios = require('axios')
 
 const config = require('./config/config')
 
+console.log(config)
+console.log(process.env.NODE_ENV)
+
 const studentRouter = require('./routes/students')
 const supervisorRouter = require('./routes/supervisors')
 const coordinatorRouter = require('./routes/coordinators')
@@ -25,7 +28,7 @@ const options = {
   loggingNoPII: false
 }
 
-var bearerStrategy = new BearerStrategy(options, function (token, done) {
+let bearerStrategy = new BearerStrategy(options, function (token, done) {
   done(null, {}, token)
 })
 
@@ -52,21 +55,25 @@ app.get('/', (req, res) => {
   res.json('Home')
 })
 
-app.get('/protected', passport.authenticate('oauth-bearer', { session: false }), (req, res) => {
-  console.log(req.authInfo)
-  var claims = req.authInfo.scp.split(' ')
-  var roles = req.authInfo.roles
-  console.log(claims)
-  console.log(roles)
+app.get(
+  '/protected',
+  passport.authenticate('oauth-bearer', { session: false }),
+  (req, res) => {
+    console.log(req.authInfo)
+    var claims = req.authInfo.scp.split(' ')
+    var roles = req.authInfo.roles
+    console.log(claims)
+    console.log(roles)
 
-  if (claims.includes('Suggestions.Read.All')) {
-    res.json({ protectedData: 12332 })
-  } else {
-    res.json({ 'auth-error': 'not authenticated to view this resource' })
+    if (claims.includes('Suggestions.Read.All')) {
+      res.json({ protectedData: 12332 })
+    } else {
+      res.json({ 'auth-error': 'not authenticated to view this resource' })
+    }
+
+    // console.log('User Info: ', req.user)
+    // console.log('Validated Claims: ', claims)
   }
-
-  // console.log('User Info: ', req.user)
-  // console.log('Validated Claims: ', claims)
-})
+)
 
 module.exports = app

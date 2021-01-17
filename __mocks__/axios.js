@@ -1,7 +1,9 @@
 const axios = jest.genMockFromModule('axios')
 
 const throwUnmockedError = () => {
-  throw new Error('This endpoint has been mocked, but hasn\'t been given a manual response.')
+  throw new Error(
+    "This endpoint has been mocked, but hasn't been given a manual response."
+  )
 }
 
 axios.post.mockImplementation(throwUnmockedError)

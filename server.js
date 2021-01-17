@@ -1,7 +1,8 @@
 require('dotenv').config()
 const mongoose = require('mongoose')
+const config = require('./config/config')
 
-mongoose.connect(process.env.MONGO_URI, {
+mongoose.connect(config.db.url, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
   useCreateIndex: true
