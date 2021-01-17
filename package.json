@@ -6,9 +6,12 @@
   "scripts": {
     "lint": "prettier --check .",
     "format": "prettier --write .",
-    "test": "jest",
-    "test:watch": "NODE_ENV=test jest --watch",
-    "start": "nodemon server.js"
+    "pretest": "start mongod -dbpath=C:\\data\\db",
+    "test": "set NODE_ENV=test && jest",
+    "posttest": "start mongo admin --eval \"use admin && db.shutdownServer()\"",
+    "test:watch": "set NODE_ENV=test jest --watch",
+    "prestart": "start mongod -dbpath=C:\\data\\db",
+    "start": "set NODE_ENV=dev && nodemon server.js"
   },
   "keywords": [],
   "author": "",
@@ -22,12 +25,14 @@
     "passport-azure-ad": "^4.3.0"
   },
   "devDependencies": {
+    "concurrently": "^5.3.0",
     "eslint": "^7.18.0",
     "eslint-config-standard": "^16.0.2",
     "eslint-plugin-import": "^2.22.1",
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-only-warn": "^1.0.2",
     "eslint-plugin-promise": "^4.2.1",
+    "husky": "^4.3.8",
     "jest": "^26.6.3",
     "prettier": "^2.2.1",
     "prettier-config-standard": "^1.0.1",
