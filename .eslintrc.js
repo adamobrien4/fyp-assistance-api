@@ -4,29 +4,16 @@ module.exports = {
     commonjs: true,
     es2021: true
   },
-  extends: [
-    'standard'
-  ],
+  extends: ['standard'],
   parserOptions: {
     ecmaVersion: 12
   },
-  plugins: [
-    'only-warn'
-  ],
+  plugins: ['only-warn'],
   rules: {
     'prefer-const': 0,
-    'comma-dangle': [
-      'error',
-      'never'
-    ],
-    'no-unused-vars': [
-      'warn'
-    ],
-    'no-var': [
-      'off'
-    ],
-    'one-var': [
-      'off'
-    ]
+    'comma-dangle': ['error', 'never'],
+    'no-unused-vars': ['warn'],
+    'no-var': ['off'],
+    'one-var': ['off']
   }
 }
