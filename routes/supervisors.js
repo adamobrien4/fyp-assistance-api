@@ -2,6 +2,7 @@ const router = require('express').Router()
 const passport = require('passport')
 const config = require('../config/config')
 const axios = require('axios')
+const MUUID = require('uuid-mongodb')
 
 const Supervisor = require('../models/Supervisor')
 
@@ -112,6 +113,16 @@ router.post(
                   profileData.data.surname.substring(1)
                 supervisorData.displayName = `${supervisorData.firstName} ${supervisorData.lastName}`
 
+                // TODO: Generate or have coordinator supply an abbreviuation for the supervisors name
+                var characters =
+                  'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+                let charLen = characters.length
+                let abbr = ''
+                for (let i = 0; i < 4; i++) {
+                  abbr += characters.charAt(Math.floor(Math.random() * charLen))
+                }
+                supervisorData.abbr = abbr
+
                 let data = {
                   principalId: supervisorData.azureId,
                   principalType: 'User',
@@ -154,11 +165,12 @@ router.post(
                 supervisorData.status === 'already_assigned'
               ) {
                 new Supervisor({
+                  _id: MUUID.from(supervisorData.azureId).toString('D'),
                   email: supervisorData.email,
                   firstName: supervisorData.firstName,
                   lastName: supervisorData.lastName,
                   displayName: supervisorData.displayName,
-                  azureId: supervisorData.azureId,
+                  abbr: supervisorData.abbr,
                   appRoleAssignmentId: supervisorData.appRoleAssignmentId
                 }).save((err, _) => {
                   if (err) console.log(err)

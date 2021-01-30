@@ -2,6 +2,7 @@ const mongoose = require('mongoose')
 const { Schema } = mongoose
 
 const supervisorSchema = new Schema({
+  _id: String,
   email: {
     type: String,
     unique: true,
@@ -13,7 +14,8 @@ const supervisorSchema = new Schema({
     type: String,
     required: true
   },
-  azureId: {
+  // abbr: The supervisors abbreviation Annette McElligott = AMg
+  abbr: {
     type: String,
     unique: true,
     required: true

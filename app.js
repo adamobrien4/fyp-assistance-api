@@ -4,12 +4,12 @@ const axios = require('axios')
 
 const config = require('./config/config')
 
-console.log(config)
-console.log(process.env.NODE_ENV)
-
 const studentRouter = require('./routes/students')
 const supervisorRouter = require('./routes/supervisors')
 const coordinatorRouter = require('./routes/coordinators')
+const topicRouter = require('./routes/topic')
+const tagRouter = require('./routes/tags')
+const proposalRouter = require('./routes/proposals')
 
 axios.interceptors.request.use(request => {
   // console.log('Starting Request', JSON.stringify(request, null, 2))
@@ -50,30 +50,8 @@ app.use(function (req, res, next) {
 app.use('/student', studentRouter)
 app.use('/supervisor', supervisorRouter)
 app.use('/coordinator', coordinatorRouter)
-
-app.get('/', (req, res) => {
-  res.json('Home')
-})
-
-app.get(
-  '/protected',
-  passport.authenticate('oauth-bearer', { session: false }),
-  (req, res) => {
-    console.log(req.authInfo)
-    var claims = req.authInfo.scp.split(' ')
-    var roles = req.authInfo.roles
-    console.log(claims)
-    console.log(roles)
-
-    if (claims.includes('Suggestions.Read.All')) {
-      res.json({ protectedData: 12332 })
-    } else {
-      res.json({ 'auth-error': 'not authenticated to view this resource' })
-    }
-
-    // console.log('User Info: ', req.user)
-    // console.log('Validated Claims: ', claims)
-  }
-)
+app.use('/topic', topicRouter)
+app.use('/tag', tagRouter)
+app.use('/proposal', proposalRouter)
 
 module.exports = app

@@ -2,6 +2,7 @@ const router = require('express').Router()
 const passport = require('passport')
 const config = require('../config/config')
 const axios = require('axios')
+const MUUID = require('uuid-mongodb')
 const _pick = require('lodash/pick')
 
 const Student = require('../models/Student')
@@ -22,8 +23,9 @@ router.get(
   (req, res) => {
     var query = Student.find().select({ email: 1, _id: 1 })
     query.exec((err, docs) => {
-      if (err || docs.length === 0)
+      if (err || docs.length === 0) {
         return res.status(404).json('No students found')
+      }
       res.json({ students: docs })
     })
   }
@@ -296,12 +298,12 @@ router.post(
                 studentData.status === 'already_assigned'
               ) {
                 new Student({
+                  _id: MUUID.from(studentData.azureId).toString('D'),
                   studentId: studentData.studentId,
                   email: studentData.email,
                   firstName: studentData.firstName,
                   lastName: studentData.lastName,
                   displayName: studentData.displayName,
-                  azureId: studentData.azureId,
                   appRoleAssignmentId: studentData.appRoleAssignmentId
                 }).save((err, _) => {
                   if (err) console.log(err)

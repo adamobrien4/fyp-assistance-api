@@ -2,6 +2,7 @@ const mongoose = require('mongoose')
 const { Schema } = mongoose
 
 const studentSchema = new Schema({
+  _id: String,
   studentId: {
     type: String,
     unqiue: true,
@@ -16,11 +17,6 @@ const studentSchema = new Schema({
   lastName: String,
   displayName: {
     type: String,
-    required: true
-  },
-  azureId: {
-    type: String,
-    unique: true,
     required: true
   },
   appRoleAssignmentId: {

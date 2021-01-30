@@ -2,6 +2,8 @@ const router = require('express').Router()
 const passport = require('passport')
 const config = require('../config/config')
 const axios = require('axios')
+const MUUID = require('uuid-mongodb')
+const permit = require('../middleware/authorization')
 
 const Coordinator = require('../models/Coordinator')
 
@@ -18,6 +20,7 @@ const setupHeader = accessToken => {
 router.get(
   '/',
   passport.authenticate('oauth-bearer', { session: false }),
+  permit(['Administrator', 'Coordinator']),
   async (req, res) => {
     await Coordinator.find()
       .select({ _id: 1, displayName: 1, email: 1 })
@@ -25,8 +28,10 @@ router.get(
         if (err) return res.status(500).json('could not retrieve coordinators')
 
         // Return an empty array if no coordinators could be found
-        if (docs === [] || docs.length === 0) return res.json([])
-        return res.json(docs)
+        if (docs === [] || docs.length === 0) {
+          return res.json({ message: 'no coordinators found' })
+        }
+        return res.json({ coordinators: docs })
       })
   }
 )
@@ -34,6 +39,7 @@ router.get(
 router.post(
   '/remove',
   passport.authenticate('oauth-bearer', { session: false }),
+  permit('Administrator'),
   async (req, res) => {
     if (!req.body.coordinatorId) {
       return res.status(400).json('no_data_provided')
@@ -50,7 +56,7 @@ router.post(
         accessToken => {
           axios
             .delete(
-              `https://graph.microsoft.com/v1.0/users/${coordinator.azureId}/appRoleAssignments/${coordinator.appRoleAssignmentId}`,
+              `https://graph.microsoft.com/v1.0/users/${coordinator._id}/appRoleAssignments/${coordinator.appRoleAssignmentId}`,
               setupHeader(accessToken)
             )
             .then(() => {
@@ -124,12 +130,15 @@ router.post(
 
               coordinatorProfile.email = profileData.data.userPrincipalName
               coordinatorProfile.azureId = profileData.data.id
-              coordinatorProfile.firstName =
-                profileData.data.givenName.charAt(0).toUpperCase() +
-                profileData.data.givenName.substring(1)
-              coordinatorProfile.lastName =
-                profileData.data.surname.charAt(0).toUpperCase() +
-                profileData.data.surname.substring(1)
+              coordinatorProfile.firstName = profileData.data?.givenName
+                ? profileData.data.givenName.charAt(0).toUpperCase() +
+                  profileData.data.givenName.substring(1)
+                : '<FirstName>'
+              coordinatorProfile.lastName = profileData.data?.surname
+                ? profileData.data.surname.charAt(0).toUpperCase() +
+                  profileData.data.surname.substring(1)
+                : '<LastName>'
+
               coordinatorProfile.displayName = `${coordinatorProfile.firstName} ${coordinatorProfile.lastName}`
 
               // Assign the FYP Coordinator custom admin role to the Coordinator account in order to allow them to assign app roles to other users
@@ -158,6 +167,8 @@ router.post(
                   ) {
                     // User already has the app role assigned to them
                     coordinatorProfile.status = 'already_assigned'
+                  } else {
+                    res.status(500).json('could not assign app role')
                   }
                 })
 
@@ -178,12 +189,13 @@ router.post(
               coordinatorProfile.status === 'assigned' ||
               coordinatorProfile.status === 'already_assigned'
             ) {
+              console.log(coordinatorProfile)
               new Coordinator({
+                _id: MUUID.from(coordinatorProfile.azureId).toString('D'),
                 email: coordinatorProfile.email,
                 firstName: coordinatorProfile.firstName,
                 lastName: coordinatorProfile.lastName,
                 displayName: coordinatorProfile.displayName,
-                azureId: coordinatorProfile.azureId,
                 appRoleAssignmentId: coordinatorProfile.appRoleAssignmentId
               }).save((err, _) => {
                 if (err) {
