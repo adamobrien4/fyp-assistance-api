@@ -17,6 +17,18 @@ const proposalSchema = new Schema(
     student: {
       type: String,
       required: true
+    },
+    status: {
+      type: String,
+      enum: [
+        'draft',
+        'submitted',
+        'under_review',
+        'pending_edits',
+        'accepted',
+        'declined'
+      ],
+      default: 'draft'
     }
   },
   { discriminatorKey: 'type' }
@@ -25,7 +37,7 @@ const proposalSchema = new Schema(
 const Proposal = mongoose.model('Proposal', proposalSchema)
 
 const CustomProposal = Proposal.discriminator(
-  'Custom',
+  'studentDefined',
   new Schema({
     environment: {
       type: String,
@@ -39,7 +51,7 @@ const CustomProposal = Proposal.discriminator(
 )
 
 const TopicProposal = Proposal.discriminator(
-  'Supervisor',
+  'supervisorDefined',
   new Schema({
     topic: {
       type: Schema.Types.ObjectId,
@@ -49,6 +61,7 @@ const TopicProposal = Proposal.discriminator(
 )
 
 module.exports = {
+  Proposal,
   CustomProposal,
   TopicProposal
 }
