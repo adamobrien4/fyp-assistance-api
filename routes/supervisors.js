@@ -28,6 +28,19 @@ router.get(
   }
 )
 
+router.get(
+  '/me',
+  passport.authenticate('oauth-bearer', { session: false }),
+  (req, res) => {
+    Supervisor.findOne({ _id: req.authInfo.oid }).exec((err, doc) => {
+      if (err) {
+        return res.status(500).json('could not find supervisor account')
+      }
+      return res.json({ supervisor: doc })
+    })
+  }
+)
+
 router.post(
   '/assign',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -187,6 +200,23 @@ router.post(
     } else {
       res.status(400).json('No supervisor emails provided')
     }
+  }
+)
+
+router.post(
+  '/me/edit',
+  passport.authenticate('oauth-bearer', { session: false }),
+  (req, res) => {
+    // TODO: Sanatise req.body supervisor edit fields
+    Supervisor.updateOne({ _id: req.authInfo.oid }, { $set: req.body }).exec(
+      err => {
+        if (err) {
+          return res.status(500).json('could not updated supervisor account')
+        }
+
+        return res.json('update successful')
+      }
+    )
   }
 )
 

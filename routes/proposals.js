@@ -14,11 +14,26 @@ router.get(
   permit('Student'),
   async (req, res) => {
     console.log({ student: req.authInfo.oid })
-    Proposal.find({ student: req.authInfo.oid }).exec((err, docs) => {
-      if (err) return res.status(404).json('could not retrieve proposals')
 
-      return res.json({ proposals: docs })
-    })
+    let customProposals
+    let supervisorProposals
+
+    try {
+      supervisorProposals = await TopicProposal.find({
+        student: req.authInfo.oid
+      }).populate('topic')
+    } catch (err) {
+      console.log(err)
+      return res.status(404).json('could not retrieve proposals')
+    }
+
+    try {
+      customProposals = await CustomProposal.find({ student: req.authInfo.oid })
+    } catch (e) {
+      console.log(e)
+    }
+
+    return res.json({ proposals: supervisorProposals })
   }
 )
 
@@ -33,7 +48,7 @@ router.post(
       title: req.body.title,
       description: req.body.description,
       additionalNotes: req.body.additionalNotes,
-      isCustomProposal: req.body.isCustomProposal,
+      chooseMessage: req.body.chooseMessage,
       student: req.authInfo.oid
     }
 
@@ -54,7 +69,7 @@ router.post(
 
     let proposal = null
 
-    if (topicData.isCustomProposal) {
+    if (req.body?.isCustomProposal) {
       proposal = new CustomProposal(topicData)
     } else {
       proposal = new TopicProposal(topicData)

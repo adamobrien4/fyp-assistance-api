@@ -24,7 +24,11 @@ const supervisorSchema = new Schema({
     type: String,
     unqiue: true,
     required: true
+  },
+  superviseStudentTopics: {
+    type: Boolean,
+    default: false
   }
 })
 
-module.exports = mongoose.model('supervisor', supervisorSchema)
+module.exports = mongoose.model('Supervisor', supervisorSchema)

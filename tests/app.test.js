@@ -19,9 +19,7 @@ beforeAll(() => {
   console.log('Settup up test environment')
 })
 
-beforeEach(() => {
-  jest.fn()
-})
+beforeEach(() => {})
 
 afterAll(() => {
   console.log('Tearing down test environment')
@@ -117,6 +115,6 @@ describe('Endpoint Testing: /coordinator', () => {
   it('GET: should return a no coordinators found errror', async () => {
     const res = await request.get('/coordinator')
 
-    console.log(res)
+    console.log(res.body)
   })
 })

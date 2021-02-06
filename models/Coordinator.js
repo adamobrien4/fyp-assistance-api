@@ -27,4 +27,4 @@ const coordinatorSchema = new Schema({
   }
 })
 
-module.exports = mongoose.model('coordinator', coordinatorSchema)
+module.exports = mongoose.model('Coordinator', coordinatorSchema)

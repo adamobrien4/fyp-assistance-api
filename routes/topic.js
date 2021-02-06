@@ -11,19 +11,33 @@ const Supervisor = require('../models/Supervisor')
 
 router.get(
   '/',
-  //passport.authenticate('oauth-bearer', { session: false }),
+  passport.authenticate('oauth-bearer', { session: false }),
   async (req, res) => {
-    Topic.find()
-      .populate('supervisor')
-      .exec((err, docs) => {
+    Topic.find({ status: { $in: ['active', 'assigned'] } }).exec(
+      (err, docs) => {
         if (err) {
+          console.log(err)
           return res
             .status(500)
             .json({ message: 'could not retrieve topics at this time' })
         }
 
         res.status(200).json({ topics: docs })
-      })
+      }
+    )
+  }
+)
+
+router.get(
+  '/me',
+  passport.authenticate('oauth-bearer', { session: false }),
+  permit('Supervisor'),
+  async (req, res) => {
+    Topic.find({ supervisor: req.authInfo.oid }).exec((err, docs) => {
+      if (err) return res.status(404).json('could not retrieve proposals')
+
+      return res.json({ topics: docs })
+    })
   }
 )
 
@@ -32,22 +46,14 @@ router.post(
   passport.authenticate('oauth-bearer', { session: false }),
   permit('Supervisor'),
   async (req, res) => {
+    // TODO: Validate topic data before using it
     let topicData = {
       title: req.body.title,
       description: req.body.description,
       tags: req.body.tags
     }
 
-    console.log(req.authInfo)
-    console.log(MUUID.from(req.authInfo.oid).toString('D'))
-
-    let supervisor = await Supervisor.findOne({
-      azureId: MUUID.from(req.authInfo.oid).toString('D')
-    })
-
-    console.log(supervisor)
-
-    topicData.supervisor = ObjectId(supervisor._id)
+    topicData.supervisor = req.authInfo.oid
 
     if (req.body?.desiredSkills) {
       topicData.desiredSkills = req.body.desiredSkills
@@ -74,6 +80,25 @@ router.post(
       }
       res.json('success')
     })
+  }
+)
+
+router.post(
+  '/edit/:id',
+  passport.authenticate('oauth-bearer', { session: false }),
+  permit('Supervisor'),
+  (req, res) => {
+    // TODO: Sanatise req.body before updating topic
+    Topic.findByIdAndUpdate(req.params.id, { $set: req.body }).exec(
+      (err, doc) => {
+        if (err) {
+          return res.status(500).json('could not update topic')
+        }
+        console.log(doc)
+
+        return res.json('topic updated')
+      }
+    )
   }
 )
 
