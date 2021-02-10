@@ -1,11 +1,11 @@
 const mongoose = require('mongoose')
 const { Schema } = mongoose
-const Populate = require('./utils/autoPopulate')
 
 const topicSchema = new Schema({
   supervisor: {
     type: String,
-    required: true
+    required: true,
+    ref: 'Supervisor'
   },
   code: {
     type: String,
@@ -36,19 +36,12 @@ const topicSchema = new Schema({
     type: Array,
     required: true
   },
-  desiredSkills: {
-    type: Array
+  additionalNotes: {
+    type: String
   },
-  targetedCourses: {
-    type: Array
-  },
-  requirements: {
+  targetCourses: {
     type: Array
   }
 })
-
-topicSchema
-  .pre('findOne', Populate('supervisor'))
-  .pre('find', Populate('supervisor'))
 
 module.exports = mongoose.model('Topic', topicSchema)

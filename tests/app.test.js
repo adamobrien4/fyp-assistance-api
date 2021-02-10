@@ -61,11 +61,11 @@ describe('Endpoint Testing: /student', () => {
     expect(res.body.students[1].email).toBe(testStudents[1].email)
   })
 
-  it('GET: should return a 404 error as there are no students in the database', async () => {
+  it('GET: should return an empty array when there are no students in the database', async () => {
     const res = await request.get('/student')
 
-    expect(res.statusCode).toBe(404)
-    expect(res.body).toBe('No students found')
+    expect(res.statusCode).toBe(200)
+    expect(res.body.students.length).toBe(0)
   })
 })
 

@@ -1,20 +1,17 @@
 const router = require('express').Router()
 const passport = require('passport')
-const MUUID = require('uuid-mongodb')
-
-const ObjectId = require('mongoose').Types.ObjectId
 
 const Topic = require('../models/Topic')
 
 const permit = require('../middleware/authorization')
-const Supervisor = require('../models/Supervisor')
 
 router.get(
   '/',
   passport.authenticate('oauth-bearer', { session: false }),
   async (req, res) => {
-    Topic.find({ status: { $in: ['active', 'assigned'] } }).exec(
-      (err, docs) => {
+    Topic.find({ status: { $in: ['active', 'assigned'] } })
+      .populate('supervisor')
+      .exec((err, docs) => {
         if (err) {
           console.log(err)
           return res
@@ -23,21 +20,56 @@ router.get(
         }
 
         res.status(200).json({ topics: docs })
+      })
+  }
+)
+
+router.get(
+  '/search',
+  passport.authenticate('oauth-bearer', { session: false }),
+  (req, res) => {
+    let query = req.body.map(elem => {
+      return { tags: elem }
+    })
+    Topic.find({ $or: [query] }).exec((err, docs) => {
+      if (err) {
+        return res.status(500).json('could not retrieve topics at this time')
       }
-    )
+
+      return res.json({ topics: docs })
+    })
   }
 )
 
 router.get(
   '/me',
   passport.authenticate('oauth-bearer', { session: false }),
-  permit('Supervisor'),
+  permit(['Supervisor', 'Coordinator']),
   async (req, res) => {
-    Topic.find({ supervisor: req.authInfo.oid }).exec((err, docs) => {
-      if (err) return res.status(404).json('could not retrieve proposals')
+    Topic.find({ supervisor: req.authInfo.oid })
+      .select('-supervisor -__v')
+      .exec((err, docs) => {
+        if (err) return res.status(404).json('could not retrieve proposals')
 
-      return res.json({ topics: docs })
-    })
+        return res.json({ topics: docs })
+      })
+  }
+)
+
+router.get(
+  '/:code',
+  passport.authenticate('oauth-bearer', { session: false }),
+  (req, res) => {
+    console.log(req.params)
+    Topic.findOne({ code: req.params.code })
+      .populate('supervisor')
+      .exec((err, doc) => {
+        if (err) {
+          return res.status(500).json('could not retrieve topic at this time')
+        }
+
+        return res.json({ topic: doc })
+      })
   }
 )
 
@@ -55,12 +87,8 @@ router.post(
 
     topicData.supervisor = req.authInfo.oid
 
-    if (req.body?.desiredSkills) {
-      topicData.desiredSkills = req.body.desiredSkills
-    }
-
-    if (req.body?.requirements) {
-      topicData.requirements = req.body.requirements
+    if (req.body?.additionalNotes) {
+      topicData.additionalNotes = req.body.additionalNotes
     }
 
     if (req.body?.targetedCourses) {
@@ -99,6 +127,32 @@ router.post(
         return res.json('topic updated')
       }
     )
+  }
+)
+
+router.post(
+  '/submit',
+  passport.authenticate('oauth-bearer', { session: false }),
+  permit('Supervisor'),
+  (req, res) => {
+    // TODO: Sanatise req.body before updating topic
+    Topic.find({ supervisor: req.authInfo.oid, status: 'suggestion' })
+      .populate('supervisor')
+      .exec((err, docs) => {
+        if (err) {
+          return res.status(500).json('could not find topics')
+        }
+
+        docs.forEach((doc, i) => {
+          let index = i + 1
+          doc.status = 'active'
+          let padToTwo = index <= 9999 ? `000${index}`.slice(-2) : index
+          doc.code = doc.supervisor.abbr + '-' + padToTwo
+          doc.save()
+        })
+
+        return res.json('topics submitted')
+      })
   }
 )
 

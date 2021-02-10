@@ -4,6 +4,7 @@ const config = require('../config/config')
 const axios = require('axios')
 const MUUID = require('uuid-mongodb')
 const _pick = require('lodash/pick')
+const permit = require('../middleware/authorization')
 
 const Student = require('../models/Student')
 
@@ -20,30 +21,14 @@ const setupHeader = accessToken => {
 router.get(
   '/',
   passport.authenticate('oauth-bearer', { session: false }),
+  permit(['Coordinator', 'Supervisor']),
   (req, res) => {
     var query = Student.find().select({ email: 1, _id: 1 })
     query.exec((err, docs) => {
-      if (err || docs.length === 0) {
-        return res.status(404).json('No students found')
+      if (err) {
+        return res.status(500).json('No students found')
       }
       res.json({ students: docs })
-    })
-  }
-)
-
-router.post(
-  '/add',
-  passport.authenticate('oauth-bearer', { session: false }),
-  (req, res) => {
-    let student = new Student({
-      email: 'adam@gmail.com',
-      studentId: '1001',
-      displayName: "Adam O'Brien"
-    })
-
-    student.save((err, _) => {
-      if (err) return res.json('Could not add student' + err)
-      res.json('Student added!')
     })
   }
 )
@@ -109,66 +94,6 @@ router.post(
         }
       )
     }
-  }
-)
-
-router.post(
-  '/assign-test',
-  passport.authenticate('oauth-bearer', { session: false }),
-  async (req, res) => {
-    if (req.body.students && req.body.students.length > 0) {
-      // Add a status of unknown to all recieved student emails
-      let students = req.body.students
-      students.map(function (student) {
-        student.status = 'unknown'
-      })
-
-      // Query database to see if any of these students already exist
-      let existingEmails = await Student.find({
-        email: {
-          $in: students.map(student => {
-            return student.email
-          })
-        }
-      })
-        .select({ email: 1, displayName: 1, _id: 0 })
-        .catch(err => {
-          console.log(err.message)
-          return res
-            .status(500)
-            .json('An error occurred. Please try again later')
-        })
-
-      // Set any existing students status to 'exists
-      for (let student of existingEmails) {
-        var elemIndex = students.map(std => std.email).indexOf(student.email)
-        if (elemIndex > -1) {
-          students[elemIndex].status = 'exists'
-        }
-      }
-
-      // The remaining students who's status is 'unknown' are either not yet assigned (added to system) or the emails do not match a student
-      for (let student of students) {
-        if (student.status === 'unknown') {
-          // Try to assign the 'Student' role to this student's emails address
-          // Test
-          if (Math.random() < 0.5) {
-            student.status = 'assigned'
-          } else {
-            if (Math.random() < 0.5) {
-              student.status = 'already_assigned'
-            } else {
-              student.status = 'failed'
-              student.message = 'Student email does not match any student email'
-            }
-          }
-        }
-      }
-
-      return res.json(students)
-    }
-
-    res.status(400).json('no data present')
   }
 )
 
@@ -270,7 +195,7 @@ router.post(
                     data,
                     setupHeader(accessToken)
                   )
-                  .catch(err => {
+                  .catch(async err => {
                     console.log(err.response.data)
                     if (
                       err.response.data.error.message ===
@@ -278,6 +203,34 @@ router.post(
                     ) {
                       // User already has the app role assigned to them
                       studentData.status = 'already_assigned'
+                      let getAppRoleAssignments = await axios
+                        .get(
+                          `https://graph.microsoft.com/v1.0/users/${data.principalId}/appRoleAssignments`,
+                          setupHeader(accessToken)
+                        )
+                        .catch(err => {
+                          console.log(err.response)
+                          return res.json(
+                            'Could not retrieve appRoleAssignments'
+                          )
+                        })
+                      let appRoleId
+                      for (let assignment of getAppRoleAssignments.data.value) {
+                        if (
+                          assignment.appRoleId === config.azure.appRoles.student
+                        ) {
+                          appRoleId = assignment.id
+                          break
+                        }
+                      }
+
+                      if (appRoleId) {
+                        studentData.appRoleAssignmentId = appRoleId
+                      } else {
+                        return res
+                          .status(500)
+                          .json('could not retrieve student assignmentId')
+                      }
                     }
                   })
 
@@ -320,6 +273,57 @@ router.post(
     } else {
       res.status(400).json('No student emails provided')
     }
+  }
+)
+
+router.post(
+  '/delete',
+  passport.authenticate('oauth-bearer', { session: false }),
+  permit('Coordinator'),
+  (req, res) => {
+    console.log('dekete')
+
+    // TODO: Validate student id
+    let studentId = req.body.studentId
+
+    Student.findById(studentId).exec((err, studentDoc) => {
+      if (err) {
+        return res.status(500).json('could not retrieve student at this time')
+      }
+
+      if (studentDoc) {
+        // Try to get access token for microsoft graph
+        getAccessTokenOnBehalfOf(
+          req.headers.authorization.substring(7),
+          'https://graph.microsoft.com/user.read+offline_access+AppRoleAssignment.ReadWrite.All+Directory.AccessAsUser.All+Directory.ReadWrite.All+Directory.Read.All',
+          async accessToken => {
+            axios
+              .delete(
+                `https://graph.microsoft.com/v1.0/users/${studentId}/appRoleAssignments/${studentDoc.appRoleAssignmentId}`,
+                setupHeader(accessToken)
+              )
+              .then(() => {
+                Student.findByIdAndRemove(studentId, (err, doc) => {
+                  if (err)
+                    return res
+                      .status(500)
+                      .json('could not remove student from database')
+
+                  return res.json('student removed')
+                })
+              })
+              .catch(err => {
+                console.log(err.response.data)
+                res.status(500).json('an_error_occurred')
+              })
+          }
+        )
+      }
+    })
+
+    // Remove app role from student in Azure AD
+
+    // On success remove student from database
   }
 )
 

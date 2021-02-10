@@ -44,6 +44,8 @@ router.post(
   async (req, res) => {
     // TODO: Validate proposal data
 
+    // TODO: Check that the user does not have a proposal sent for this tpoic already
+
     let topicData = {
       title: req.body.title,
       description: req.body.description,
@@ -63,7 +65,7 @@ router.post(
       let prev = { ...topicData }
       topicData = {
         ...prev,
-        topic: req.body.topic._id
+        topic: req.body.topic
       }
     }
 
