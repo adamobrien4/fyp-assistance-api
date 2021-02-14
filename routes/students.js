@@ -100,14 +100,8 @@ router.post(
 router.post(
   '/assign',
   passport.authenticate('oauth-bearer', { session: false }),
+  permit('Coordinator'),
   async (req, res) => {
-    // TODO: Check users appRole to se if they have access to this route (Globally)
-
-    if (!req.authInfo.roles || !req.authInfo.roles.includes('Coordinator')) {
-      console.log(req.authInfo.roles)
-      return res.status(401).json('User must be supervisor')
-    }
-
     let allStudentData = []
 
     // TODO: Ask justin how to handle this correctly
@@ -202,7 +196,7 @@ router.post(
                       'Permission being assigned already exists on the object'
                     ) {
                       // User already has the app role assigned to them
-                      studentData.status = 'already_assigned'
+                      studentData.status = 'assigned'
                       let getAppRoleAssignments = await axios
                         .get(
                           `https://graph.microsoft.com/v1.0/users/${data.principalId}/appRoleAssignments`,
@@ -227,9 +221,7 @@ router.post(
                       if (appRoleId) {
                         studentData.appRoleAssignmentId = appRoleId
                       } else {
-                        return res
-                          .status(500)
-                          .json('could not retrieve student assignmentId')
+                        studentData.status = 'no_assignment'
                       }
                     }
                   })
@@ -246,10 +238,7 @@ router.post(
 
               // If the student has been assigned or has previously been assigned add them to the database
               // as they are curently not in the database at the moment (somehow, this case shouldnt actualy happen, but just in case)
-              if (
-                studentData.status === 'assigned' ||
-                studentData.status === 'already_assigned'
-              ) {
+              if (studentData.status === 'assigned') {
                 new Student({
                   _id: MUUID.from(studentData.azureId).toString('D'),
                   studentId: studentData.studentId,
@@ -267,7 +256,7 @@ router.post(
               allStudentData.push(studentData)
             }
           }
-          return res.json(allStudentData)
+          return res.json({ students: allStudentData })
         }
       )
     } else {

@@ -3,6 +3,7 @@ const passport = require('passport')
 const config = require('../config/config')
 const axios = require('axios')
 const MUUID = require('uuid-mongodb')
+const permit = require('../middleware/authorization')
 
 const Supervisor = require('../models/Supervisor')
 
@@ -44,14 +45,8 @@ router.get(
 router.post(
   '/assign',
   passport.authenticate('oauth-bearer', { session: false }),
+  permit('Coordinator'),
   async (req, res) => {
-    // TODO: Check users appRole to se if they have access to this route (Globally)
-
-    if (!req.authInfo.roles || !req.authInfo.roles.includes('Coordinator')) {
-      console.log(req.authInfo.roles)
-      return res.status(401).json('User must be supervisor')
-    }
-
     let allSupervisorData = []
 
     // TODO: Ask justin how to handle this correctly
@@ -150,14 +145,44 @@ router.post(
                     data,
                     setupHeader(accessToken)
                   )
-                  .catch(err => {
+                  .catch(async err => {
                     console.log(err.response.data)
                     if (
                       err.response.data.error.message ===
                       'Permission being assigned already exists on the object'
                     ) {
                       // User already has the app role assigned to them
-                      supervisorData.status = 'already_assigned'
+                      supervisorData.status = 'assigned'
+                      let getAppRoleAssignments = await axios
+                        .get(
+                          `https://graph.microsoft.com/v1.0/users/${data.principalId}/appRoleAssignments`,
+                          setupHeader(accessToken)
+                        )
+                        .catch(err => {
+                          console.log(err.response)
+                          return res.json(
+                            'Could not retrieve appRoleAssignments'
+                          )
+                        })
+
+                      console.log(getAppRoleAssignments.data)
+
+                      let appRoleId
+                      for (let assignment of getAppRoleAssignments.data.value) {
+                        if (
+                          assignment.appRoleId ===
+                          config.azure.appRoles.supervisor
+                        ) {
+                          appRoleId = assignment.id
+                          break
+                        }
+                      }
+
+                      if (appRoleId) {
+                        supervisorData.appRoleAssignmentId = appRoleId
+                      } else {
+                        supervisorData.status = 'no_assignment'
+                      }
                     }
                   })
 
@@ -173,10 +198,7 @@ router.post(
 
               // If the supervisor has been assigned or has previously been assigned add them to the database
               // as they are curently not in the database at the moment (somehow, this case shouldnt actualy happen, but just in case)
-              if (
-                supervisorData.status === 'assigned' ||
-                supervisorData.status === 'already_assigned'
-              ) {
+              if (supervisorData.status === 'assigned') {
                 new Supervisor({
                   _id: MUUID.from(supervisorData.azureId).toString('D'),
                   email: supervisorData.email,
@@ -194,7 +216,7 @@ router.post(
               allSupervisorData.push(supervisorData)
             }
           }
-          return res.json(allSupervisorData)
+          return res.json({ supervisors: allSupervisorData })
         }
       )
     } else {
@@ -217,6 +239,53 @@ router.post(
         return res.json('update successful')
       }
     )
+  }
+)
+
+router.post(
+  '/delete',
+  passport.authenticate('oauth-bearer', { session: false }),
+  permit('Coordinator'),
+  (req, res) => {
+    // TODO: Validate supervisor id
+    let supervisorId = req.body.supervisorId
+
+    Supervisor.findById(supervisorId).exec((err, supervisorDoc) => {
+      if (err) {
+        return res
+          .status(500)
+          .json('could not retrieve supervisor at this time')
+      }
+
+      if (supervisorDoc) {
+        // Try to get access token for microsoft graph
+        getAccessTokenOnBehalfOf(
+          req.headers.authorization.substring(7),
+          'https://graph.microsoft.com/user.read+offline_access+AppRoleAssignment.ReadWrite.All+Directory.AccessAsUser.All+Directory.ReadWrite.All+Directory.Read.All',
+          async accessToken => {
+            axios
+              .delete(
+                `https://graph.microsoft.com/v1.0/users/${supervisorId}/appRoleAssignments/${supervisorDoc.appRoleAssignmentId}`,
+                setupHeader(accessToken)
+              )
+              .then(() => {
+                Supervisor.findByIdAndRemove(supervisorId, (err, doc) => {
+                  if (err)
+                    return res
+                      .status(500)
+                      .json('could not remove supervisor from database')
+
+                  return res.json('supervisor removed')
+                })
+              })
+              .catch(err => {
+                console.log(err.response.data)
+                res.status(500).json('an_error_occurred')
+              })
+          }
+        )
+      }
+    })
   }
 )
 
