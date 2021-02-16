@@ -2,8 +2,12 @@ const router = require('express').Router()
 const passport = require('passport')
 
 const Topic = require('../models/Topic')
+const Tag = require('../models/Tag')
 
 const permit = require('../middleware/authorization')
+const validateResourceMW = require('../middleware/validateResource')
+
+const { searchTopicSchema } = require('../schemas/routes/topicsSchema')
 
 router.get(
   '/',
@@ -24,20 +28,42 @@ router.get(
   }
 )
 
-router.get(
+router.post(
   '/search',
   passport.authenticate('oauth-bearer', { session: false }),
+  validateResourceMW(searchTopicSchema),
   (req, res) => {
-    let query = req.body.map(elem => {
-      return { tags: elem }
+    let query = req.body.tags.map(tag => {
+      return { ancestors: tag }
     })
-    Topic.find({ $or: [query] }).exec((err, docs) => {
-      if (err) {
-        return res.status(500).json('could not retrieve topics at this time')
-      }
 
-      return res.json({ topics: docs })
-    })
+    // Find related tags
+    Tag.find({ $or: [...query] })
+      .select({ _id: 1 })
+      .exec((err, docs) => {
+        if (err) {
+          return res.status(500).json('could not retrieve topics at this time')
+        }
+
+        let tags = [...docs.map(tag => tag._id), ...req.body.tags]
+
+        // Search for related topics
+
+        let query = tags.map(tag => ({
+          tags: tag
+        }))
+
+        Topic.find({
+          $or: [...query]
+        }).exec((err, docs) => {
+          if (err) {
+            return res
+              .status(500)
+              .json('could not retrieve topics at this time')
+          }
+          return res.json({ topics: docs })
+        })
+      })
   }
 )
 

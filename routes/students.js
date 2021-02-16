@@ -5,6 +5,8 @@ const axios = require('axios')
 const MUUID = require('uuid-mongodb')
 const _pick = require('lodash/pick')
 const permit = require('../middleware/authorization')
+const validateResourceMW = require('../middleware/validateResource')
+const studentSchemas = require('../schemas/studentSchema')
 
 const Student = require('../models/Student')
 
@@ -269,9 +271,8 @@ router.post(
   '/delete',
   passport.authenticate('oauth-bearer', { session: false }),
   permit('Coordinator'),
+  validateResourceMW(studentSchemas.deleteStudentSchema),
   (req, res) => {
-    console.log('dekete')
-
     // TODO: Validate student id
     let studentId = req.body.studentId
 
@@ -307,6 +308,8 @@ router.post(
               })
           }
         )
+      } else {
+        return res.json('could not retrieve student at this time')
       }
     })
 

@@ -1,6 +1,6 @@
 const mongoose = require('mongoose')
 
-const { TopicProposal } = require('../../models/Proposal')
+const { SupervisorProposal } = require('../../models/Proposal')
 const Topic = require('../../models/Topic')
 
 // TODO: Find out how to initialise the test DB before when running individual test files
@@ -9,7 +9,7 @@ const { setupDB } = require('../../testConfig/testSetup')
 setupDB('test')
 
 describe('Proposal Model test', () => {
-  describe('TopicProposal', () => {
+  describe('SupervisorProposal', () => {
     it('should auto-populate the Topic field', async () => {
       const topicData = {
         supervisor: mongoose.Types.ObjectId(),
@@ -24,14 +24,14 @@ describe('Proposal Model test', () => {
       const topic = await new Topic(topicData).save()
 
       // Insert linked Proposal
-      await new TopicProposal({
+      await new SupervisorProposal({
         title: 'Test Proposal',
         description: 'Test Description',
         student: '123-123-123',
         topic: topic._id
       }).save()
 
-      const proposal = await TopicProposal.findOne()
+      const proposal = await SupervisorProposal.findOne()
 
       expect(proposal.topic.title).toBe(topicData.title)
       expect(proposal.topic.description).toBe(topicData.description)

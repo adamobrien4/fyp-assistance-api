@@ -23,7 +23,8 @@
     "mongoose": "^5.11.10",
     "passport": "^0.4.1",
     "passport-azure-ad": "^4.3.0",
-    "uuid-mongodb": "^2.4.1"
+    "uuid-mongodb": "^2.4.1",
+    "yup": "^0.32.8"
   },
   "devDependencies": {
     "concurrently": "^5.3.0",

@@ -6,6 +6,7 @@ const { setupDB } = require('../testConfig/testSetup')
 
 // Add mock passport implementation
 require('../__mocks__/passport')
+const axios = require('../__mocks__/axios')
 
 const Student = require('../models/Student')
 const Coordinator = require('../models/Coordinator')
@@ -14,16 +15,6 @@ const Coordinator = require('../models/Coordinator')
 setupDB('test')
 
 const request = supertest(app)
-
-beforeAll(() => {
-  console.log('Settup up test environment')
-})
-
-beforeEach(() => {})
-
-afterAll(() => {
-  console.log('Tearing down test environment')
-})
 
 describe('Endpoint Testing: /student', () => {
   it('GET: should return all students', async () => {
@@ -66,6 +57,44 @@ describe('Endpoint Testing: /student', () => {
 
     expect(res.statusCode).toBe(200)
     expect(res.body.students.length).toBe(0)
+  })
+
+  describe('POST: /delete', () => {
+    it('Should return a malformed body error', async () => {
+      const res = await request.post('/student/delete').send({})
+
+      expect(res.statusCode).toBe(400)
+      expect(res.body.error).toBe('studentId is a required field')
+    })
+
+    it('Should remove a student role assignment and delete the student from the database', async () => {
+      // Seed the Database
+      let testStudents = [
+        {
+          _id: 'a1a1a1a1-a4ca-4a29-a62a-1b7c0d49851a',
+          studentId: '1234',
+          email: '1234@studentmail.ul.ie',
+          firstName: 'Adam',
+          lastName: 'Byrne',
+          displayName: 'Adam Byrne',
+          appRoleAssignmentId: '1234-123-1234'
+        }
+      ]
+      await Student.insertMany(testStudents)
+
+      // TODO: Ask juston how to do this
+
+      // Mock axios functions
+      axios.post.mockImplementation(url => {
+        // return access token
+        return 'access_token'
+      })
+      axios.delete.mockImplementation(() => {
+        return 'mocked'
+      })
+
+      const res = await request.post('/student/delete')
+    })
   })
 })
 

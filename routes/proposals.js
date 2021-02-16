@@ -4,9 +4,14 @@ const passport = require('passport')
 const {
   Proposal,
   CustomProposal,
-  TopicProposal
+  SupervisorProposal
 } = require('../models/Proposal')
 const permit = require('../middleware/authorization')
+const validateResourceMW = require('../middleware/validateResource')
+
+const { editProposalSchema } = require('../schemas/routes/proposalSchema')
+
+const _ = require('lodash')
 
 router.get(
   '/me',
@@ -15,25 +20,13 @@ router.get(
   async (req, res) => {
     console.log({ student: req.authInfo.oid })
 
-    let customProposals
-    let supervisorProposals
+    Proposal.find({}).exec((err, docs) => {
+      if (err) {
+        return res.status(500).json('could not retrieve proposals at this time')
+      }
 
-    try {
-      supervisorProposals = await TopicProposal.find({
-        student: req.authInfo.oid
-      }).populate('topic')
-    } catch (err) {
-      console.log(err)
-      return res.status(404).json('could not retrieve proposals')
-    }
-
-    try {
-      customProposals = await CustomProposal.find({ student: req.authInfo.oid })
-    } catch (e) {
-      console.log(e)
-    }
-
-    return res.json({ proposals: supervisorProposals })
+      return res.json({ proposals: docs })
+    })
   }
 )
 
@@ -74,7 +67,7 @@ router.post(
     if (req.body?.isCustomProposal) {
       proposal = new CustomProposal(topicData)
     } else {
-      proposal = new TopicProposal(topicData)
+      proposal = new SupervisorProposal(topicData)
     }
 
     proposal.save((err, doc) => {
@@ -93,38 +86,79 @@ router.post(
   '/edit/:id',
   passport.authenticate('oauth-bearer', { session: false }),
   permit('Student'),
+  validateResourceMW(editProposalSchema),
   (req, res) => {
-    console.log(req.body)
-
-    // TODO: Validate input from user
-    // Data which will be used to update the requested proposal
+    let editableFields = [
+      'title',
+      'description',
+      'additionalNotes',
+      'chooseMessage'
+    ]
 
     // Check that the requesting user owns the proposal they are trying to edit
-    Proposal.findOne({ _id: req.params.id, student: req.authInfo.oid }).exec(
-      (err, docs) => {
-        if (err) {
-          return res.status(500).json('please try again')
-        }
+    Proposal.findOne({
+      _id: req.params.id,
+      student: req.authInfo.oid
+    }).exec((err, doc) => {
+      if (err) {
+        return res.status(500).json('could not retrieve proposal at this time')
+      }
 
-        if (docs) {
-          Proposal.findByIdAndUpdate(req.params.id, { $set: req.body }).exec(
-            (err, doc) => {
-              if (err) {
-                return res.status(500).json('could not update proposal')
-              }
+      if (!doc) {
+        return res.status(500).json('could not retrieve proposal at this time')
+      }
 
-              console.log(doc)
+      // Restrict the fields of a proposal that can be edited based on its status
+      if (doc.type === 'studentDefined') {
+        editableFields.push('environment', 'languages')
+      }
 
-              return res.json('proposal updated')
-            }
+      switch (doc.status) {
+        case 'draft':
+          // All fields can be edited
+          break
+        case 'pending_edits':
+          editableFields = editableFields.splice(
+            editableFields.indexOf('title'),
+            1
+          )
+          break
+        case 'submitted':
+        case 'under_review':
+        case 'accepted':
+        case 'declined':
+          return res.status(400).json('proposal cannot be edited at this time')
+      }
+
+      const query = _.pick(req.body, editableFields)
+
+      if (doc) {
+        let proposalQuery
+        if (doc.type === 'studentDefined') {
+          proposalQuery = CustomProposal.updateOne(
+            { _id: req.params.id, student: req.authInfo.oid },
+            { $set: query }
           )
         } else {
-          return res
-            .status(403)
-            .json('your requested proposal could not be found')
+          proposalQuery = SupervisorProposal.updateOne(
+            { _id: req.params.id, student: req.authInfo.oid },
+            { $set: query }
+          )
         }
+
+        proposalQuery.exec((err, doc) => {
+          if (err) {
+            return res.status(500).json('could not update proposal')
+          }
+
+          return res.json('proposal updated')
+        })
+      } else {
+        return res
+          .status(500)
+          .json('your requested proposal could not be found')
       }
-    )
+    })
   }
 )
 

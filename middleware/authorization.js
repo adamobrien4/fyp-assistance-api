@@ -7,7 +7,7 @@ const permit = appRole => {
       return next()
     }
 
-    if (!authInfo?.roles) {
+    if (!authInfo?.roles || authInfo?.roles?.length === 0) {
       return res.status(403).json('user role not found')
     }
 
@@ -16,7 +16,9 @@ const permit = appRole => {
       if (found) {
         return next()
       }
-    } else if (typeof appRole === 'string') {
+    }
+
+    if (typeof appRole === 'string') {
       if (authInfo.roles.includes(appRole)) {
         return next()
       }

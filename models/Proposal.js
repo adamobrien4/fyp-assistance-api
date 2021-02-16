@@ -56,7 +56,7 @@ const CustomProposal = Proposal.discriminator(
   customProposalSchema
 )
 
-const topicProposalSchema = new Schema({
+const SupervisorProposalSchema = new Schema({
   topic: {
     type: Schema.Types.ObjectId,
     required: true,
@@ -65,17 +65,18 @@ const topicProposalSchema = new Schema({
 })
 
 // Always populate the topic field
-topicProposalSchema
-  .pre('findOne', Populate('topic'))
-  .pre('findOne', Populate('topic'))
+SupervisorProposalSchema.pre('findOne', Populate('topic')).pre(
+  'findOne',
+  Populate('topic')
+)
 
-const TopicProposal = Proposal.discriminator(
+const SupervisorProposal = Proposal.discriminator(
   'supervisorDefined',
-  topicProposalSchema
+  SupervisorProposalSchema
 )
 
 module.exports = {
   Proposal,
   CustomProposal,
-  TopicProposal
+  SupervisorProposal
 }

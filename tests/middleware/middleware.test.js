@@ -1,6 +1,8 @@
 /* eslint-disable no-undef */
-const permit = require('../../middleware/authorization')
+const yup = require('yup')
 
+const permit = require('../../middleware/authorization')
+const validateResourceMW = require('../../middleware/validateResource')
 beforeEach(() => {
   process.env.NODE_ENV = 'undef'
 })
@@ -129,5 +131,68 @@ describe('User Authorization check', () => {
       )
       expect(next).toHaveBeenCalledTimes(0)
     })
+  })
+
+  describe('when user has no/invalid role', () => {
+    const req = {
+      authInfo: {
+        roles: []
+      }
+    }
+    const res = {
+      status: jest.fn(x => res),
+      json: jest.fn(x => res)
+    }
+
+    it('should return with user not found error', () => {
+      const next = jest.fn()
+      permit('Student')(req, res, next)
+
+      expect(process.env.NODE_ENV === 'test').toBeFalsy()
+      expect(next).toBeCalledTimes(0)
+      expect(res.status).toBeCalledWith(403)
+      expect(res.json).toBeCalledWith('user role not found')
+    })
+  })
+})
+
+describe('Resource Validation', () => {
+  const sampleSchema = yup.object({
+    username: yup.string().required(),
+    age: yup.number().required()
+  })
+  it('should sucessfully validate a resource', async () => {
+    let next = jest.fn()
+    let req = {
+      body: {
+        username: 'adam',
+        age: 21
+      }
+    }
+
+    await validateResourceMW(sampleSchema)(req, {}, next)
+
+    expect(next).toHaveBeenCalled()
+  })
+
+  it('should return an error if the resource is malformed', async () => {
+    let req = {
+      body: {
+        username: 'adam',
+        age: '123-546'
+      }
+    }
+    let res = {
+      status: jest.fn(x => res),
+      json: jest.fn(x => res)
+    }
+    let next = jest.fn()
+
+    await validateResourceMW(sampleSchema)(req, res, next)
+
+    expect(next).toHaveBeenCalledTimes(0)
+    expect(res.status).toHaveBeenCalled()
+    expect(res.status).toHaveBeenCalledWith(400)
+    expect(res.json).toHaveBeenCalled()
   })
 })
