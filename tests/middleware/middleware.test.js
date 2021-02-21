@@ -3,6 +3,15 @@ const yup = require('yup')
 
 const permit = require('../../middleware/authorization')
 const validateResourceMW = require('../../middleware/validateResource')
+const checkPhase = require('../../middleware/phaseCheck')
+
+const add = require('date-fns/add')
+const sub = require('date-fns/sub')
+
+const Phase = jest.genMockFromModule('../../models/Phase')
+
+beforeAll(() => {})
+
 beforeEach(() => {
   process.env.NODE_ENV = 'undef'
 })
@@ -194,5 +203,79 @@ describe('Resource Validation', () => {
     expect(res.status).toHaveBeenCalled()
     expect(res.status).toHaveBeenCalledWith(400)
     expect(res.json).toHaveBeenCalled()
+  })
+
+  describe('remove unnecessary fields', () => {
+    const sampleSchema = yup.object({
+      username: yup.string().required(),
+      age: yup.number().required()
+    })
+    it('should remove any unnecessary fields from the resouce', async () => {
+      let req = {
+        body: {
+          username: 'adam1',
+          fname: 'adam',
+          age: 21,
+          __v: 4
+        }
+      }
+      let res = {
+        status: jest.fn(x => res),
+        json: jest.fn(x => res)
+      }
+      let next = jest.fn()
+
+      const notExpected = ['fname', '__v']
+      const expected = ['username', 'age']
+
+      await validateResourceMW(sampleSchema)(req, res, next)
+
+      expect(Object.keys(req.body)).toEqual(
+        expect.not.arrayContaining(notExpected)
+      )
+      expect(Object.keys(req.body)).toEqual(expect.arrayContaining(expected))
+      expect(next).toHaveBeenCalled()
+    })
+  })
+})
+
+describe('Phase Check', () => {
+  process.env.NODE_ENV = 'test'
+  let req = {
+    body: {}
+  }
+  let res = {
+    status: jest.fn(x => res),
+    json: jest.fn(x => res)
+  }
+  let next = jest.fn()
+
+  it('should allow the action to be carried out: Number', async () => {
+    // Seed Phase DB
+    const phases = [
+      {
+        phase: 0,
+        start_time: sub(new Date(), { days: 3 }),
+        end_time: sub(new Date(), { days: 2 })
+      },
+      {
+        phase: 1,
+        start_time: sub(new Date(), { days: 1 }),
+        end_time: add(new Date(), { days: 1 })
+      },
+      {
+        phase: 2,
+        start_time: add(new Date(), { days: 2 }),
+        end_time: add(new Date(), { days: 3 })
+      }
+    ]
+
+    // checkPhase(1)(req, res, next)
+
+    // expect(next).toHaveBeenCalled()
+    // expect(Phase.findOne).toHaveBeenCalled()
+    // expect(req.phase.phase).toBe(phases[1].phase)
+    // expect(req.phase.startDate).toBe(phases[1].start_time)
+    // expect(req.phase.endDate).toBe(phases[1].end_time)
   })
 })

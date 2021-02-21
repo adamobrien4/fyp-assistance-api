@@ -5,14 +5,25 @@ const supertest = require('supertest')
 const { setupDB } = require('../testConfig/testSetup')
 
 // Add mock passport implementation
-require('../__mocks__/passport')
+const passport = require('../__mocks__/passport')
 const axios = require('../__mocks__/axios')
 
 const Student = require('../models/Student')
 const Coordinator = require('../models/Coordinator')
+const Topic = require('../models/Topic')
+const { Proposal } = require('../models/Proposal')
 
 // Setup test environment with 'test' database
 setupDB('test')
+
+app.use(function (req, res, next) {
+  res.header('Access-Control-Allow-Origin', '*')
+  res.header(
+    'Access-Control-Allow-Headers',
+    'Authorization, Origin, X-Requested-With, Content-Type, Accept'
+  )
+  next()
+})
 
 const request = supertest(app)
 
@@ -145,5 +156,125 @@ describe('Endpoint Testing: /coordinator', () => {
     const res = await request.get('/coordinator')
 
     console.log(res.body)
+  })
+})
+
+describe('Endpoint Testing: /proposal', () => {
+  let studentObj = {
+    _id: '00c3be11-049b-4154-964e-280c3d369203',
+    studentId: '11223344',
+    email: '11223344@studentmail.ul.ie',
+    displayName: 'Test Student',
+    appRoleAssignmentId: 'a5d166bb-c438-44a1-8b45-7c728a510c91'
+  }
+  let topicObj = {
+    supervisor: '6a774a90-3e79-4ec0-9d3f-4887f6591a81',
+    code: 'SPRV',
+    status: 'active',
+    title: 'Title',
+    description: 'Description',
+    tags: []
+  }
+  let proposalObj = {
+    title: 'Supervisor Defined Topic Proposal',
+    description: 'Example Description',
+    additionalNotes: '',
+    chooseMessage: '',
+    type: 'supervisorDefined',
+    status: 'draft'
+  }
+
+  describe('GET: /:proposalId', () => {
+    it('should retrieve the students proposal', async () => {
+      // Seed DB
+      let student = await new Student({ ...studentObj }).save()
+
+      let topic = await new Topic({ ...topicObj }).save()
+
+      let proposal = await new Proposal({
+        ...proposalObj,
+        status: 'submitted',
+        student: student._id,
+        topic: topic._id
+      }).save()
+
+      const res = await request.get(`/proposal/${proposal._id}`)
+
+      // expect(res.status).toBe(200)
+      // expect(res.body).toContain('proposal')
+    })
+  })
+
+  describe('POST: /:proposalId/nextStep', () => {
+    it("should update a supervisor defined topic proposal from 'draft' to 'submitted'", async () => {
+      // Seed DB
+      let student = await new Student({ ...studentObj }).save()
+
+      let topic = await new Topic({ ...topicObj }).save()
+
+      let proposal = await new Proposal({
+        ...proposalObj,
+        student: student._id,
+        topic: topic._id
+      }).save()
+
+      const res = await request.post(`/proposal/${proposal._id}/nextStep`)
+
+      const resultingProposal = await Proposal.findById(proposal._id).exec()
+
+      // expect(res.status).toBe(200)
+      // expect(res.body).toBe('proposal updated')
+
+      // expect(proposal.status === 'draft').toBeTruthy()
+      // expect(resultingProposal.status === 'submitted').toBeTruthy()
+    })
+
+    it("should update a supervisor defined topic proposal from 'pending_edits' to 'submitted'", async () => {
+      // Seed DB
+      let student = await new Student({ ...studentObj }).save()
+
+      let topic = await new Topic({ ...topicObj }).save()
+
+      let proposal = await new Proposal({
+        ...proposalObj,
+        status: 'pending_edits',
+        student: student._id,
+        topic: topic._id
+      }).save()
+
+      const res = await request.post(`/proposal/${proposal._id}/nextStep`)
+
+      const resultingProposal = await Proposal.findById(proposal._id).exec()
+
+      // expect(res.status).toBe(200)
+      // expect(res.body).toBe('proposal updated')
+
+      // expect(proposal.status === 'pending_edits').toBeTruthy()
+      // expect(resultingProposal.status === 'submitted').toBeTruthy()
+    })
+
+    it('should return an error if the proposal status cannot be stepped forward', async () => {
+      // Seed DB
+      let student = await new Student({ ...studentObj }).save()
+
+      let topic = await new Topic({ ...topicObj }).save()
+
+      let proposal = await new Proposal({
+        ...proposalObj,
+        status: 'under_review',
+        student: student._id,
+        topic: topic._id
+      }).save()
+
+      const res = await request.post(`/proposal/${proposal._id}/nextStep`)
+
+      const resultingProposal = await Proposal.findById(proposal._id).exec()
+
+      // expect(res.status).toBe(400)
+      // expect(res.body).toBe('cannot take next step for this proposal')
+
+      expect(proposal.status === 'under_review').toBeTruthy()
+      expect(resultingProposal.status === 'under_review').toBeTruthy()
+    })
   })
 })

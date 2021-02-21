@@ -1,6 +1,5 @@
 const mongoose = require('mongoose')
 const { Schema } = mongoose
-const Populate = require('./utils/autoPopulate')
 
 const proposalSchema = new Schema(
   {
@@ -19,6 +18,7 @@ const proposalSchema = new Schema(
       type: String
     },
     student: {
+      ref: 'Student',
       type: String,
       required: true
     },
@@ -33,6 +33,19 @@ const proposalSchema = new Schema(
         'declined'
       ],
       default: 'draft'
+    },
+    topic: {
+      type: Schema.Types.ObjectId,
+      required: true,
+      ref: 'Topic'
+    },
+    type: {
+      type: String,
+      enum: ['supervisorDefined', 'studentDefined'],
+      default: 'supervisorDefined'
+    },
+    supervisorMessage: {
+      type: String
     }
   },
   { discriminatorKey: 'type' }
@@ -56,27 +69,7 @@ const CustomProposal = Proposal.discriminator(
   customProposalSchema
 )
 
-const SupervisorProposalSchema = new Schema({
-  topic: {
-    type: Schema.Types.ObjectId,
-    required: true,
-    ref: 'Topic'
-  }
-})
-
-// Always populate the topic field
-SupervisorProposalSchema.pre('findOne', Populate('topic')).pre(
-  'findOne',
-  Populate('topic')
-)
-
-const SupervisorProposal = Proposal.discriminator(
-  'supervisorDefined',
-  SupervisorProposalSchema
-)
-
 module.exports = {
   Proposal,
-  CustomProposal,
-  SupervisorProposal
+  CustomProposal
 }

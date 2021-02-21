@@ -4,8 +4,15 @@ const config = require('../config/config')
 const axios = require('axios')
 const MUUID = require('uuid-mongodb')
 const permit = require('../middleware/authorization')
+const validateResourceMW = require('../middleware/validateResource')
 
 const Supervisor = require('../models/Supervisor')
+const Topic = require('../models/Topic')
+
+const {
+  editSupervisorSchema,
+  studentProjectAvailibilitySchema
+} = require('../schemas/routes/supervisorSchema')
 
 const getAccessTokenOnBehalfOf = require('../graph/graph')
 
@@ -228,11 +235,13 @@ router.post(
 router.post(
   '/me/edit',
   passport.authenticate('oauth-bearer', { session: false }),
+  permit('Supervisor'),
+  validateResourceMW(editSupervisorSchema),
   (req, res) => {
-    // TODO: Sanatise req.body supervisor edit fields
     Supervisor.updateOne({ _id: req.authInfo.oid }, { $set: req.body }).exec(
       err => {
         if (err) {
+          console.log(err)
           return res.status(500).json('could not updated supervisor account')
         }
 
@@ -242,6 +251,95 @@ router.post(
   }
 )
 
+router.post(
+  '/me/studentProjectAvailibility',
+  passport.authenticate('oauth-bearer', { session: false }),
+  permit('Supervisor'),
+  validateResourceMW(studentProjectAvailibilitySchema),
+  async (req, res) => {
+    if (req.body.active) {
+      // Check if custom studen topic exists
+      Topic.findOne({
+        supervisor: req.authInfo.oid,
+        type: 'studentTopic'
+      }).exec((err, doc) => {
+        if (err) {
+          return res.status(500).json('could not retrieve topic')
+        }
+
+        if (doc === null) {
+          try {
+            new Topic({
+              supervisor: req.authInfo.oid,
+              status: 'suggestion',
+              title: 'Student Proposal Topic',
+              description: '<UNSET>',
+              tags: ['Student Definable'],
+              additionalNotes: '',
+              targetCourses: [],
+              type: 'studentTopic'
+            }).save()
+          } catch (err) {
+            return res
+              .status(500)
+              .json('could not create student project topic')
+          }
+
+          return res.json('topic created')
+        } else {
+          Topic.updateOne(
+            { supervisor: req.authInfo.oid, type: 'studentTopic' },
+            { status: 'suggestion' }
+          ).exec((err, doc) => {
+            if (err) {
+              console.errror(err)
+              return res.status(500).json('could not update topic')
+            }
+
+            return res.json('update successful')
+          })
+        }
+      })
+    } else {
+      Topic.updateOne(
+        { supervisor: req.authInfo.oid, type: 'studentTopic' },
+        { status: 'archived' }
+      ).exec((err, doc) => {
+        if (err) {
+          console.errror(err)
+          return res.status(500).json('could not update topic')
+        }
+
+        return res.json('update successful')
+      })
+    }
+  }
+)
+
+// GET: Whether the supervisor is available to supervise student defined topics
+router.get(
+  '/me/studentProjectAvailibility',
+  passport.authenticate('oauth-bearer', { session: false }),
+  permit('Supervisor'),
+  async (req, res) => {
+    Topic.findOne({
+      supervisor: req.authInfo.oid,
+      type: 'studentTopic'
+    }).exec((err, doc) => {
+      if (err) {
+        return res.status(500).json('could not retrieve topic')
+      }
+
+      if (doc) {
+        return res.json({ topic: doc })
+      } else {
+        return res.json({ topic: null })
+      }
+    })
+  }
+)
+
+// DELETE: Delete a supervisor
 router.post(
   '/delete',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -286,6 +384,45 @@ router.post(
         )
       }
     })
+  }
+)
+
+// GET: Supervisors who are available to supervise Custom Student Topics
+router.get(
+  '/availableCustomTopic',
+  passport.authenticate('oauth-bearer', { session: false }),
+  permit('Student'),
+  (req, res) => {
+    Supervisor.find({ superviseStudentTopics: true })
+      .select('displayName')
+      .exec((err, docs) => {
+        if (err) {
+          return res
+            .status(500)
+            .json('could not retrieve list of available supervisors')
+        }
+
+        return res.json({ supervisors: docs })
+      })
+  }
+)
+
+// GET: List of supervisors for dropdown / select etc
+router.get(
+  '/list',
+  passport.authenticate('oauth-bearer', { session: false }),
+  (req, res) => {
+    Supervisor.find()
+      .select('displayName')
+      .exec((err, docs) => {
+        if (err) {
+          return res
+            .status(500)
+            .json('could not retrieve list of available supervisors')
+        }
+
+        return res.json({ supervisors: docs })
+      })
   }
 )
 

@@ -41,6 +41,12 @@ const topicSchema = new Schema({
   },
   targetCourses: {
     type: Array
+  },
+  type: {
+    type: String,
+    enum: ['regular', 'studentTopic'],
+    default: 'regular',
+    required: true
   }
 })
 

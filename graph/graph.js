@@ -15,7 +15,8 @@ const getAccessTokenOnBehalfOf = (accessToken, scopes, callback) => {
       callback(response.data.access_token)
     })
     .catch(err => {
-      console.log(err.response.data)
+      console.error(err)
+      console.log(err.response)
     })
 }
 

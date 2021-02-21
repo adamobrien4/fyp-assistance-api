@@ -10,6 +10,7 @@ const coordinatorRouter = require('./routes/coordinators')
 const topicRouter = require('./routes/topic')
 const tagRouter = require('./routes/tags')
 const proposalRouter = require('./routes/proposals')
+const phaseRouter = require('./routes/phases')
 
 axios.interceptors.request.use(request => {
   // console.log('Starting Request', JSON.stringify(request, null, 2))
@@ -47,11 +48,17 @@ app.use(function (req, res, next) {
   next()
 })
 
+app.use((req, res, next) => {
+  req.phase = 1
+  next()
+})
+
 app.use('/student', studentRouter)
 app.use('/supervisor', supervisorRouter)
 app.use('/coordinator', coordinatorRouter)
 app.use('/topic', topicRouter)
 app.use('/tag', tagRouter)
 app.use('/proposal', proposalRouter)
+app.use('/phase', phaseRouter)
 
 module.exports = app
