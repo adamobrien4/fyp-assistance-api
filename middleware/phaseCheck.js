@@ -1,17 +1,22 @@
 const Phase = require('../models/Phase')
 
-const checkPhase = allowedPhase => async (req, res, next) => {
+const checkPhase = allowedPhase => async (req, res, next, testPhaseDoc) => {
   try {
-    let phaseDoc = await Phase.findOne({
-      start_time: { $lte: new Date() },
-      end_time: { $gte: new Date() }
-    }).exec()
+    let phaseDoc
+    if (process.env.NODE_ENV !== 'test') {
+      phaseDoc = await Phase.findOne({
+        start_time: { $lte: new Date() },
+        end_time: { $gte: new Date() }
+      }).exec()
+    } else {
+      phaseDoc = testPhaseDoc
+    }
 
     if (phaseDoc === null) {
       return res.status(500).json('could not retrieve phase')
     }
 
-    if (typeof allowedPhase === 'string' && allowedPhase !== phaseDoc.phase) {
+    if (typeof allowedPhase === 'number' && allowedPhase !== phaseDoc.phase) {
       return res
         .status(400)
         .json('action cannot be carried out during current phase')
@@ -26,12 +31,11 @@ const checkPhase = allowedPhase => async (req, res, next) => {
 
     req.phase = {
       phase: phaseDoc.phase,
-      startDate: phaseDoc.start_date,
-      endDate: phaseDoc.end_date
+      startDate: phaseDoc.start_time,
+      endDate: phaseDoc.end_time
     }
-    next()
+    return next()
   } catch (err) {
-    console.error(err)
     return res.status(500).json('could not retrieve phase')
   }
 }

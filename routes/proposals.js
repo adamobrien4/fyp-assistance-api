@@ -9,6 +9,7 @@ const {
 const Topic = require('../models/Topic')
 const permit = require('../middleware/authorization')
 const validateResourceMW = require('../middleware/validateResource')
+const isPhase = require('../middleware/phaseCheck')
 
 const {
   addProposalSchema,
@@ -18,14 +19,12 @@ const {
 
 const _ = require('lodash')
 
-// GET: /me
+// GET: Get all requesting student's proposals
 router.get(
   '/me',
   passport.authenticate('oauth-bearer', { session: false }),
   permit('Student'),
   async (req, res) => {
-    console.log({ student: req.authInfo.oid })
-
     Proposal.find({ student: req.authInfo.oid })
       .populate('topic', 'code title')
       .exec((err, docs) => {
@@ -150,73 +149,37 @@ router.post(
   }
 )
 
+// POST: Edit proposal
 router.post(
   '/edit/:id',
   passport.authenticate('oauth-bearer', { session: false }),
   permit('Student'),
   validateResourceMW(editProposalSchema),
   (req, res) => {
-    // TODO: Only allow edit when it is a speciic status
-
-    let editableFields = [
-      'title',
-      'description',
-      'additionalNotes',
-      'chooseMessage'
-    ]
+    console.log(req.body)
 
     // Check that the requesting user owns the proposal they are trying to edit
     Proposal.findOne({
       _id: req.params.id,
-      student: req.authInfo.oid
+      student: req.authInfo.oid,
+      $or: [{ status: 'draft' }, { status: 'pending_edits' }]
     }).exec((err, doc) => {
       if (err) {
         return res.status(500).json('could not retrieve proposal at this time')
       }
 
       if (!doc) {
-        return res.status(500).json('could not retrieve proposal at this time')
+        return res.status(404).json('invalid proposal id')
       }
-
-      // Restrict the fields of a proposal that can be edited based on its status
-      if (doc.type === 'studentDefined') {
-        editableFields.push('environment', 'languages')
-      }
-
-      switch (doc.status) {
-        case 'draft':
-          // All fields can be edited
-          break
-        case 'pending_edits':
-          editableFields = editableFields.splice(
-            editableFields.indexOf('title'),
-            1
-          )
-          break
-        case 'submitted':
-        case 'under_review':
-        case 'accepted':
-        case 'declined':
-          return res.status(400).json('proposal cannot be edited at this time')
-      }
-
-      const query = _.pick(req.body, editableFields)
 
       if (doc) {
-        let proposalQuery
-        if (doc.type === 'studentDefined') {
-          proposalQuery = CustomProposal.updateOne(
-            { _id: req.params.id, student: req.authInfo.oid },
-            { $set: query }
-          )
-        } else {
-          proposalQuery = SupervisorProposal.updateOne(
-            { _id: req.params.id, student: req.authInfo.oid },
-            { $set: query }
-          )
-        }
-
-        proposalQuery.exec((err, doc) => {
+        Proposal.updateOne(
+          {
+            _id: req.params.id,
+            student: req.authInfo.oid
+          },
+          { $set: req.body }
+        ).exec((err, doc) => {
           if (err) {
             return res.status(500).json('could not update proposal')
           }
@@ -232,11 +195,13 @@ router.post(
   }
 )
 
+// POST: Upgrade proposal to next status
 router.post(
-  '/:id/nextStep',
+  '/:id/upgrade',
   passport.authenticate('oauth-bearer', { session: false }),
   permit('Student'),
-  validateResourceMW(editProposalSchema),
+  // TODO: Create schema for upgrade route
+  //validateResourceMW(editProposalSchema),
   (req, res) => {
     Proposal.findOne({ _id: req.params.id }).exec((err, doc) => {
       if (err) {
@@ -272,15 +237,56 @@ router.post(
   }
 )
 
+// POST: Upgrade proposal to next status
+router.post(
+  '/:id/downgrade',
+  passport.authenticate('oauth-bearer', { session: false }),
+  permit('Student'),
+  isPhase(3),
+  // TODO: Create schema for downgrade route
+  //validateResourceMW(editProposalSchema),
+  (req, res) => {
+    Proposal.findOne({ _id: req.params.id, status: 'submitted' }).exec(
+      (err, doc) => {
+        if (err) {
+          return res.status(500).json('could not retrieve proposal')
+        }
+
+        if (doc) {
+          doc.status = 'draft'
+          try {
+            doc.save()
+          } catch (err) {
+            return res.status(500).json('could not update proposal')
+          }
+          return res.json('proposal updated')
+        }
+
+        return res.status(404).json('could not find proposal')
+      }
+    )
+  }
+)
+
+// POST: Supervisor respond to proposal
 router.post(
   '/respond/:id',
   passport.authenticate('oauth-bearer', { session: false }),
   permit(['Supervisor', 'Coordinator']),
   validateResourceMW(proposalResponseSchema),
   async (req, res) => {
-    let proposalDoc = await Proposal.findOne({ _id: req.params.id }).exec()
+    let proposalDoc = await Proposal.findOne({
+      _id: req.params.id,
+      status: 'submitted'
+    })
+      .populate('topic')
+      .exec()
 
     if (proposalDoc) {
+      if (proposalDoc.topic.supervisor !== req.authInfo.oid) {
+        return res.status(403).json('Unauthorised')
+      }
+
       proposalDoc.status = req.body.responseType
       proposalDoc.supervisorMessage = req.body.message
 
@@ -288,6 +294,7 @@ router.post(
         await proposalDoc.save()
         return res.json('update successful')
       } catch (err) {
+        console.error(err)
         return res.status(500).json('could not update proposal status')
       }
     } else {

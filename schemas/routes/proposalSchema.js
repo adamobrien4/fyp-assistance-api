@@ -33,8 +33,8 @@ const addProposalSchema = yup.object({
 })
 
 const editProposalSchema = yup.object({
-  title: yup.string().required('Proposal must include a title'),
-  description: yup.string().required('Proposal must include a description'),
+  title: yup.string(),
+  description: yup.string(),
   chooseMessage: yup.string(),
   additionalNotes: yup.string(),
   environment: yup.string(),
@@ -45,7 +45,7 @@ const proposalResponseSchema = yup.object({
   responseType: yup
     .string()
     .oneOf(
-      ['request_edits', 'accept', 'decline'],
+      ['pending_edits', 'accepted', 'rejected'],
       'Response type does not match available options'
     )
     .required('Response type is required'),

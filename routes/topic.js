@@ -8,6 +8,7 @@ const { Proposal, SupervisorProposal } = require('../models/Proposal')
 
 const permit = require('../middleware/authorization')
 const validateResourceMW = require('../middleware/validateResource')
+const isPhase = require('../middleware/phaseCheck')
 
 const { searchTopicSchema } = require('../schemas/routes/topicsSchema')
 
@@ -155,7 +156,7 @@ router.get(
     Topic.find({ supervisor: req.authInfo.oid })
       .select('-supervisor -__v')
       .exec((err, docs) => {
-        if (err) return res.status(404).json('could not retrieve proposals')
+        if (err) return res.status(500).json('could not retrieve proposals')
 
         return res.json({ topics: docs })
       })
@@ -268,6 +269,7 @@ router.get(
   '/proposals/:id',
   passport.authenticate('oauth-bearer', { session: false }),
   permit('Supervisor'),
+  isPhase(4),
   (req, res) => {
     // TODO: Only find proposals with specific type (submitted, accepted, rejected)
     Proposal.find({

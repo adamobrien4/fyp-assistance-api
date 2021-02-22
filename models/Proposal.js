@@ -30,7 +30,7 @@ const proposalSchema = new Schema(
         'under_review',
         'pending_edits',
         'accepted',
-        'declined'
+        'rejected'
       ],
       default: 'draft'
     },

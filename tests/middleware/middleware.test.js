@@ -3,17 +3,13 @@ const yup = require('yup')
 
 const permit = require('../../middleware/authorization')
 const validateResourceMW = require('../../middleware/validateResource')
-const checkPhase = require('../../middleware/phaseCheck')
+const isPhase = require('../../middleware/phaseCheck')
 
 const add = require('date-fns/add')
 const sub = require('date-fns/sub')
 
-const Phase = jest.genMockFromModule('../../models/Phase')
-
-beforeAll(() => {})
-
 beforeEach(() => {
-  process.env.NODE_ENV = 'undef'
+  process.env.NODE_ENV = 'test'
 })
 
 describe('User Authorization check', () => {
@@ -38,6 +34,7 @@ describe('User Authorization check', () => {
       }
     }
     it('should allow access when passing string', () => {
+      process.env.NODE_ENV = 'undef'
       const next = jest.fn()
       permit('Student')(req, {}, next)
 
@@ -46,6 +43,7 @@ describe('User Authorization check', () => {
     })
 
     it('should allow access when passing an array', () => {
+      process.env.NODE_ENV = 'undef'
       const next = jest.fn()
       permit(['Student'])(req, {}, next)
 
@@ -54,6 +52,7 @@ describe('User Authorization check', () => {
     })
 
     it('should decline access when passing a string', () => {
+      process.env.NODE_ENV = 'undef'
       const next = jest.fn()
       const res = {
         status: jest.fn(c => res),
@@ -70,6 +69,7 @@ describe('User Authorization check', () => {
     })
 
     it('should decline access when passing an array', () => {
+      process.env.NODE_ENV = 'undef'
       const next = jest.fn()
       const res = {
         status: jest.fn(c => res),
@@ -94,6 +94,7 @@ describe('User Authorization check', () => {
     }
 
     it('should allow access when passing a string', () => {
+      process.env.NODE_ENV = 'undef'
       const next = jest.fn()
       permit('Coordinator')(req, {}, next)
 
@@ -102,6 +103,7 @@ describe('User Authorization check', () => {
     })
 
     it('should allow access when passing an array', () => {
+      process.env.NODE_ENV = 'undef'
       const next = jest.fn()
       permit(['Coordinator', 'Student'])(req, {}, next)
 
@@ -110,6 +112,7 @@ describe('User Authorization check', () => {
     })
 
     it('should decline access when passing a string', () => {
+      process.env.NODE_ENV = 'undef'
       const next = jest.fn()
       const res = {
         status: jest.fn(r => res),
@@ -126,6 +129,7 @@ describe('User Authorization check', () => {
     })
 
     it('should decline access when passing an array', () => {
+      process.env.NODE_ENV = 'undef'
       const next = jest.fn()
       const res = {
         status: jest.fn(r => res),
@@ -154,6 +158,7 @@ describe('User Authorization check', () => {
     }
 
     it('should return with user not found error', () => {
+      process.env.NODE_ENV = 'undef'
       const next = jest.fn()
       permit('Student')(req, res, next)
 
@@ -240,42 +245,130 @@ describe('Resource Validation', () => {
 })
 
 describe('Phase Check', () => {
-  process.env.NODE_ENV = 'test'
-  let req = {
-    body: {}
-  }
-  let res = {
-    status: jest.fn(x => res),
-    json: jest.fn(x => res)
-  }
-  let next = jest.fn()
+  const phases = [
+    {
+      phase: 0,
+      start_time: sub(new Date(), { days: 3 }),
+      end_time: sub(new Date(), { days: 2 })
+    },
+    {
+      phase: 1,
+      start_time: sub(new Date(), { days: 1 }),
+      end_time: add(new Date(), { days: 1 })
+    },
+    {
+      phase: 2,
+      start_time: add(new Date(), { days: 2 }),
+      end_time: add(new Date(), { days: 3 })
+    }
+  ]
 
   it('should allow the action to be carried out: Number', async () => {
-    // Seed Phase DB
-    const phases = [
-      {
-        phase: 0,
-        start_time: sub(new Date(), { days: 3 }),
-        end_time: sub(new Date(), { days: 2 })
-      },
-      {
-        phase: 1,
-        start_time: sub(new Date(), { days: 1 }),
-        end_time: add(new Date(), { days: 1 })
-      },
-      {
-        phase: 2,
-        start_time: add(new Date(), { days: 2 }),
-        end_time: add(new Date(), { days: 3 })
-      }
-    ]
+    let req = {
+      body: {}
+    }
+    let res = {
+      status: jest.fn(x => res),
+      json: jest.fn(x => res)
+    }
+    let next = jest.fn()
 
-    // checkPhase(1)(req, res, next)
+    isPhase(1)(req, res, next, phases[1])
 
-    // expect(next).toHaveBeenCalled()
-    // expect(Phase.findOne).toHaveBeenCalled()
-    // expect(req.phase.phase).toBe(phases[1].phase)
-    // expect(req.phase.startDate).toBe(phases[1].start_time)
-    // expect(req.phase.endDate).toBe(phases[1].end_time)
+    expect(next).toHaveBeenCalled()
+    expect(res.status).toHaveBeenCalledTimes(0)
+    expect(res.json).toHaveBeenCalledTimes(0)
+
+    expect(req.phase.phase).toBe(phases[1].phase)
+    expect(req.phase.startDate).toBe(phases[1].start_time)
+    expect(req.phase.endDate).toBe(phases[1].end_time)
+  })
+
+  it('should not allow the action to be carried out: Number', async () => {
+    let req = {
+      body: {}
+    }
+    let res = {
+      status: jest.fn(x => res),
+      json: jest.fn(x => res)
+    }
+    let next = jest.fn()
+
+    isPhase(4)(req, res, next, phases[1])
+
+    expect(next).toHaveBeenCalledTimes(0)
+    expect(res.status).toHaveBeenCalledTimes(1)
+    expect(res.json).toHaveBeenCalledTimes(1)
+    expect(res.status).toHaveBeenCalledWith(400)
+    expect(res.json).toHaveBeenCalledWith(
+      'action cannot be carried out during current phase'
+    )
+
+    expect(req.phase).toBe(undefined)
+  })
+
+  it('should allow the action to be carried out: Array[Number, Number]', async () => {
+    let req = {
+      body: {}
+    }
+    let res = {
+      status: jest.fn(x => res),
+      json: jest.fn(x => res)
+    }
+    let next = jest.fn()
+
+    isPhase([1, 2])(req, res, next, phases[1])
+
+    expect(next).toHaveBeenCalled()
+    expect(res.status).toHaveBeenCalledTimes(0)
+    expect(res.json).toHaveBeenCalledTimes(0)
+
+    expect(req.phase.phase).toBe(phases[1].phase)
+    expect(req.phase.startDate).toBe(phases[1].start_time)
+    expect(req.phase.endDate).toBe(phases[1].end_time)
+  })
+
+  it('should not allow the action to be carried out: Array[Number, Number]', async () => {
+    let req = {
+      body: {}
+    }
+    let res = {
+      status: jest.fn(x => res),
+      json: jest.fn(x => res)
+    }
+    let next = jest.fn()
+
+    isPhase([0, 2])(req, res, next, phases[1])
+
+    expect(next).toHaveBeenCalledTimes(0)
+    expect(res.status).toHaveBeenCalledTimes(1)
+    expect(res.json).toHaveBeenCalledTimes(1)
+    expect(res.status).toHaveBeenCalledWith(400)
+    expect(res.json).toHaveBeenCalledWith(
+      'action cannot be carried out during current phase'
+    )
+
+    expect(req.phase).toBe(undefined)
+  })
+
+  it('should expect an error if the phase could not be found', async () => {
+    let req = {
+      body: {}
+    }
+    let res = {
+      status: jest.fn(x => res),
+      json: jest.fn(x => res)
+    }
+    let next = jest.fn()
+
+    isPhase(1)(req, res, next, null)
+
+    expect(next).toHaveBeenCalledTimes(0)
+    expect(res.status).toHaveBeenCalledTimes(1)
+    expect(res.json).toHaveBeenCalledTimes(1)
+    expect(res.status).toHaveBeenCalledWith(500)
+    expect(res.json).toHaveBeenCalledWith('could not retrieve phase')
+
+    expect(req.phase).toBe(undefined)
   })
 })

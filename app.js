@@ -4,6 +4,8 @@ const axios = require('axios')
 
 const config = require('./config/config')
 
+const mongoSanatize = require('express-mongo-sanitize')
+
 const studentRouter = require('./routes/students')
 const supervisorRouter = require('./routes/supervisors')
 const coordinatorRouter = require('./routes/coordinators')
@@ -35,6 +37,7 @@ let bearerStrategy = new BearerStrategy(options, function (token, done) {
 
 let app = express()
 app.use(express.json())
+app.use(mongoSanatize({ replaceWith: '_' }))
 app.use(passport.initialize())
 passport.use(bearerStrategy)
 
