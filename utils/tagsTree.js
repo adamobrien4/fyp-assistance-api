@@ -44,10 +44,5 @@ module.exports = [
     title: 'Item4',
     value: 'Item4',
     key: 'Item4'
-  },
-  {
-    title: 'Student Definable',
-    value: 'Student Definable',
-    key: 'Student Definable'
   }
 ]

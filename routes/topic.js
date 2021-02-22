@@ -10,140 +10,173 @@ const permit = require('../middleware/authorization')
 const validateResourceMW = require('../middleware/validateResource')
 const isPhase = require('../middleware/phaseCheck')
 
-const { searchTopicSchema } = require('../schemas/routes/topicsSchema')
-
-router.get(
-  '/',
-  passport.authenticate('oauth-bearer', { session: false }),
-  async (req, res) => {
-    Topic.find({ status: { $in: ['active', 'assigned'] } })
-      .populate('supervisor')
-      .exec((err, docs) => {
-        if (err) {
-          console.log(err)
-          return res
-            .status(500)
-            .json({ message: 'could not retrieve topics at this time' })
-        }
-
-        docs.map(async document => {
-          await Proposal.find({ topic: document._id })
-        })
-
-        res.status(200).json({ topics: docs })
-      })
-  }
-)
+const {
+  addTopicSchema,
+  searchTopicSchema
+} = require('../schemas/routes/topicsSchema')
 
 // TODO: Make search more efficient + clean code
 router.post(
   '/search',
   passport.authenticate('oauth-bearer', { session: false }),
   validateResourceMW(searchTopicSchema),
-  (req, res) => {
-    // No Supervisor and No Tags
-    if (req.body.tags === null && req.body.supervisor === null) {
-      Topic.find({}).exec((err, docs) => {
+  async (req, res) => {
+    let query = { status: 'active' }
+    let error = null
+
+    // Check topicType
+    switch (req.body?.topicType) {
+      case 'regular':
+      case 'studentTopic':
+        query.type = req.body.topicType
+        break
+      default:
+        break
+    }
+
+    // Check supervisor
+    if (req.body?.supervisor) {
+      query.supervisor = req.body.supervisor
+    }
+
+    // Check tags
+    if (req.body?.tags) {
+      let tagsQuery = req.body.tags.map(tag => {
+        return { ancestors: tag }
+      })
+
+      let tagDocs
+      try {
+        tagDocs = await Tag.find({ $or: [...tagsQuery] })
+          .select('_id')
+          .exec()
+      } catch (err) {
+        return res.status(500).json('could not retrieve tags')
+      }
+
+      let tags = [...tagDocs.map(tag => tag._id), ...req.body.tags]
+
+      // Search topics related to related query tags
+      query['$or'] = tags.map(tag => ({
+        tags: tag
+      }))
+    }
+
+    Topic.find(query)
+      .populate('supervisor')
+      .exec((err, docs) => {
         if (err) {
           return res.status(500).json('could not retrieve topics at this time')
         }
-
         return res.json({ topics: docs })
       })
-      return
-    }
 
-    // Supervisor and no tags
-    let query
+    // if (error) {
+    //   return res.status(500).json(error)
+    // }
 
-    if (req.body.tags) {
-      query = req.body.tags.map(tag => {
-        return { ancestors: tag }
-      })
-    }
+    // // Supervisor and no tags
+    // let query
 
-    if (req.body?.supervisor && !req.body?.tags) {
-      Topic.find({ supervisor: req.body.supervisor })
-        .populate('supervisor')
-        .exec((err, docs) => {
-          if (err) {
-            return res.status(500).json('could not retrieve topics at this')
-          }
+    // let topicType = req.body.topicType === 'all' ? false : req.body.topicType
 
-          return res.json({ topics: docs })
-        })
-      return
-    }
+    // if (req.body.tags) {
+    //   query = req.body.tags.map(tag => {
+    //     return { ancestors: tag }
+    //   })
+    // }
 
-    // Tags and no supervisor
+    // if (req.body?.supervisor && !req.body?.tags) {
+    //   Topic.find({ status: 'active', supervisor: req.body.supervisor })
+    //     .populate('supervisor')
+    //     .exec((err, docs) => {
+    //       if (err) {
+    //         return res.status(500).json('could not retrieve topics at this')
+    //       }
 
-    if (!req.body?.supervisor && req.body?.tags) {
-      // Find tags related to queried tags
-      Tag.find({ $or: [...query] })
-        .select({ _id: 1 })
-        .exec((err, docs) => {
-          if (err) {
-            return res
-              .status(500)
-              .json('could not retrieve topics at this time')
-          }
+    //       return res.json({ topics: docs })
+    //     })
+    //   return
+    // }
 
-          let tags = [...docs.map(tag => tag._id), ...req.body.tags]
+    // // Tags and no supervisor
 
-          // Search topics related to related query tags
-          let query = tags.map(tag => ({
-            tags: tag
-          }))
+    // if (!req.body?.supervisor && req.body?.tags) {
+    //   // Find tags related to queried tags
+    //   Tag.find({ $or: [...query] })
+    //     .select('_id')
+    //     .exec((err, docs) => {
+    //       if (err) {
+    //         return res
+    //           .status(500)
+    //           .json('could not retrieve topics at this time')
+    //       }
 
-          Topic.find({
-            $or: [...query]
-          })
-            .populate('supervisor')
-            .exec((err, docs) => {
-              if (err) {
-                return res
-                  .status(500)
-                  .json('could not retrieve topics at this time')
-              }
-              return res.json({ topics: docs })
-            })
-        })
-      return
-    }
+    //       let tags = [...docs.map(tag => tag._id), ...req.body.tags]
 
-    // Tags and supervisor
+    //       // Search topics related to related query tags
+    //       let query = tags.map(tag => ({
+    //         tags: tag
+    //       }))
 
-    if (req.body?.supervisor && req.body?.tags) {
-      // Find tags related to queried tags
-      Tag.find({ $or: [...query] })
-        .select({ _id: 1 })
-        .exec((err, docs) => {
-          if (err) {
-            return res.status(500).json('could not retrieve tags at this time')
-          }
+    //       Topic.find({
+    //         status: 'active',
+    //         $or: [...query]
+    //       })
+    //         .populate('supervisor')
+    //         .exec((err, docs) => {
+    //           if (err) {
+    //             return res
+    //               .status(500)
+    //               .json('could not retrieve topics at this time')
+    //           }
+    //           return res.json({ topics: docs })
+    //         })
+    //     })
+    //   return
+    // }
 
-          let tags = [...docs.map(tag => tag._id), ...req.body.tags]
+    // // Tags and supervisor
 
-          Topic.find({ supervisor: req.body.supervisor })
-            .populate('supervisor')
-            .exec((err2, docs2) => {
-              if (err2) {
-                return res
-                  .status(500)
-                  .json('could not retrieve topics at this time')
-              }
+    // if (req.body?.supervisor && req.body?.tags) {
+    //   // Find tags related to queried tags
+    //   Tag.find({ $or: [...query] })
+    //     .select({ _id: 1 })
+    //     .exec((err, docs) => {
+    //       if (err) {
+    //         return res.status(500).json('could not retrieve tags at this time')
+    //       }
 
-              const result = docs2.filter(doc =>
-                doc.tags.some(r => tags.includes(r))
-              )
+    //       let tags = [...docs.map(tag => tag._id), ...req.body.tags]
 
-              return res.json({ topics: result })
-            })
-        })
-      return
-    }
+    //       Topic.find({ supervisor: req.body.supervisor })
+    //         .populate('supervisor')
+    //         .exec((err2, docs2) => {
+    //           if (err2) {
+    //             return res
+    //               .status(500)
+    //               .json('could not retrieve topics at this time')
+    //           }
 
-    return res.status(400).json('must supply either supervisor or tags fields')
+    //           const result = docs2.filter(doc =>
+    //             doc.tags.some(r => tags.includes(r))
+    //           )
+
+    //           return res.json({ topics: result })
+    //         })
+    //     })
+    //   return
+    // }
+
+    // Topic.find({ status: 'active' })
+    //   .populate('supervisor')
+    //   .exec((err, docs) => {
+    //     if (err) {
+    //       return res.status(500).json('could not retrieve topics at this time')
+    //     }
+
+    //     return res.json({ topics: docs })
+    //   })
   }
 )
 
@@ -185,7 +218,9 @@ router.get(
 router.post(
   '/add',
   passport.authenticate('oauth-bearer', { session: false }),
+  isPhase(2),
   permit('Supervisor'),
+  validateResourceMW(addTopicSchema),
   async (req, res) => {
     // TODO: Validate topic data before using it
     let topicData = {
@@ -203,12 +238,6 @@ router.post(
     if (req.body?.targetedCourses) {
       topicData.targetedCourses = req.body.targetedCourses
     }
-
-    // Validate the data passed in the request body
-
-    // Required fields
-
-    // TODO: Validate data coming from request
 
     new Topic(topicData).save((err, _) => {
       if (err) {
@@ -265,6 +294,7 @@ router.post(
   }
 )
 
+// GET: Proposals related to a topic
 router.get(
   '/proposals/:id',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -274,7 +304,7 @@ router.get(
     // TODO: Only find proposals with specific type (submitted, accepted, rejected)
     Proposal.find({
       topic: ObjectId(req.params.id),
-      status: { $in: ['submitted', 'accepted', 'rejected'] }
+      status: { $in: ['submitted', 'accepted'] }
     })
       .select({ student: 1, _id: 1, title: 1, status: 1 })
       .populate('student', 'displayName')
