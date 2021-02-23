@@ -15,13 +15,15 @@ router.get(
     Phase.findOne({
       start_time: { $lte: new Date() },
       end_time: { $gte: new Date() }
-    }).exec((err, doc) => {
-      if (err) {
-        return res.status(500).json('could not find phase')
-      }
-
-      return res.json({ phase: doc })
     })
+      .select('phase start_time end_time')
+      .exec((err, doc) => {
+        if (err) {
+          return res.status(500).json('could not find phase')
+        }
+
+        return res.json({ phase: doc })
+      })
   }
 )
 
@@ -56,17 +58,6 @@ router.post(
         return res.status(500).json('could not update phase')
       }
     })
-
-    return res.json('done')
-  }
-)
-
-router.get(
-  '/check',
-  //passport.authenticate('oauth-bearer', { session: false }),
-  checkPhase([0, 1]),
-  async (req, res) => {
-    // TODO: Validate input
 
     return res.json('done')
   }

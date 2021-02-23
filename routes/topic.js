@@ -15,6 +15,41 @@ const {
   searchTopicSchema
 } = require('../schemas/routes/topicsSchema')
 
+router.post('/test', async (req, res) => {
+  let topics = await Topic.find({})
+    .select('title description code supervisor type tags targetCourses')
+    .exec()
+  let topicIds = []
+
+  topics.forEach(t => {
+    topicIds.push(t._id)
+  })
+
+  let proposals = await Proposal.aggregate([
+    {
+      $match: { topic: { $in: [...topicIds] } }
+    },
+    {
+      $group: { _id: '$topic', count: { $sum: 1 } }
+    }
+  ])
+
+  let result = {}
+
+  proposals.forEach(el => {
+    result[el._id] = { count: el.count }
+  })
+
+  console.log(result)
+
+  let s = topics.map(t => ({
+    ...t._doc,
+    proposalCount: result[t._id]?.count ? result[t._id]?.count : 0
+  }))
+
+  res.json(s)
+})
+
 // TODO: Make search more efficient + clean code
 router.post(
   '/search',
@@ -22,7 +57,6 @@ router.post(
   validateResourceMW(searchTopicSchema),
   async (req, res) => {
     let query = { status: 'active' }
-    let error = null
 
     // Check topicType
     switch (req.body?.topicType) {
@@ -57,126 +91,44 @@ router.post(
       let tags = [...tagDocs.map(tag => tag._id), ...req.body.tags]
 
       // Search topics related to related query tags
-      query['$or'] = tags.map(tag => ({
+      query.$or = tags.map(tag => ({
         tags: tag
       }))
     }
 
     Topic.find(query)
       .populate('supervisor')
-      .exec((err, docs) => {
+      .exec(async (err, docs) => {
         if (err) {
           return res.status(500).json('could not retrieve topics at this time')
         }
+
+        if (docs) {
+          let topicIds = docs.map(d => d._id)
+
+          let proposalInfo = await Proposal.aggregate([
+            {
+              $match: { topic: { $in: [...topicIds] } }
+            },
+            {
+              $group: { _id: '$topic', count: { $sum: 1 } }
+            }
+          ])
+
+          let countInfo = {}
+
+          proposalInfo.forEach(el => (countInfo[el._id] = { count: el.count }))
+
+          let result = docs.map(t => ({
+            ...t._doc,
+            proposalCount: countInfo[t._id]?.count ? countInfo[t._id]?.count : 0
+          }))
+
+          docs = result
+        }
+
         return res.json({ topics: docs })
       })
-
-    // if (error) {
-    //   return res.status(500).json(error)
-    // }
-
-    // // Supervisor and no tags
-    // let query
-
-    // let topicType = req.body.topicType === 'all' ? false : req.body.topicType
-
-    // if (req.body.tags) {
-    //   query = req.body.tags.map(tag => {
-    //     return { ancestors: tag }
-    //   })
-    // }
-
-    // if (req.body?.supervisor && !req.body?.tags) {
-    //   Topic.find({ status: 'active', supervisor: req.body.supervisor })
-    //     .populate('supervisor')
-    //     .exec((err, docs) => {
-    //       if (err) {
-    //         return res.status(500).json('could not retrieve topics at this')
-    //       }
-
-    //       return res.json({ topics: docs })
-    //     })
-    //   return
-    // }
-
-    // // Tags and no supervisor
-
-    // if (!req.body?.supervisor && req.body?.tags) {
-    //   // Find tags related to queried tags
-    //   Tag.find({ $or: [...query] })
-    //     .select('_id')
-    //     .exec((err, docs) => {
-    //       if (err) {
-    //         return res
-    //           .status(500)
-    //           .json('could not retrieve topics at this time')
-    //       }
-
-    //       let tags = [...docs.map(tag => tag._id), ...req.body.tags]
-
-    //       // Search topics related to related query tags
-    //       let query = tags.map(tag => ({
-    //         tags: tag
-    //       }))
-
-    //       Topic.find({
-    //         status: 'active',
-    //         $or: [...query]
-    //       })
-    //         .populate('supervisor')
-    //         .exec((err, docs) => {
-    //           if (err) {
-    //             return res
-    //               .status(500)
-    //               .json('could not retrieve topics at this time')
-    //           }
-    //           return res.json({ topics: docs })
-    //         })
-    //     })
-    //   return
-    // }
-
-    // // Tags and supervisor
-
-    // if (req.body?.supervisor && req.body?.tags) {
-    //   // Find tags related to queried tags
-    //   Tag.find({ $or: [...query] })
-    //     .select({ _id: 1 })
-    //     .exec((err, docs) => {
-    //       if (err) {
-    //         return res.status(500).json('could not retrieve tags at this time')
-    //       }
-
-    //       let tags = [...docs.map(tag => tag._id), ...req.body.tags]
-
-    //       Topic.find({ supervisor: req.body.supervisor })
-    //         .populate('supervisor')
-    //         .exec((err2, docs2) => {
-    //           if (err2) {
-    //             return res
-    //               .status(500)
-    //               .json('could not retrieve topics at this time')
-    //           }
-
-    //           const result = docs2.filter(doc =>
-    //             doc.tags.some(r => tags.includes(r))
-    //           )
-
-    //           return res.json({ topics: result })
-    //         })
-    //     })
-    //   return
-    // }
-
-    // Topic.find({ status: 'active' })
-    //   .populate('supervisor')
-    //   .exec((err, docs) => {
-    //     if (err) {
-    //       return res.status(500).json('could not retrieve topics at this time')
-    //     }
-
-    //     return res.json({ topics: docs })
-    //   })
   }
 )
 
@@ -200,15 +152,29 @@ router.get(
 router.get(
   '/:code',
   passport.authenticate('oauth-bearer', { session: false }),
+  permit(['Student', 'Supervisor', 'Coordinator']),
   (req, res) => {
-    console.log(req.params)
+    console.log('o')
     Topic.findOne({ code: req.params.code })
       .populate('supervisor', 'displayName')
-      .exec((err, doc) => {
+      .exec(async (err, doc) => {
         if (err) {
           return res.status(500).json('could not retrieve topic at this time')
         }
 
+        if (req.authInfo.roles.includes('Student')) {
+          // Check if student has created proposal for this topic or not already
+          let hasProposal = await Proposal.find({
+            topic: doc._id,
+            student: req.authInfo.oid
+          })
+            .select('_id')
+            .exec()
+
+          if (hasProposal) {
+            doc._doc.hasProposal = true
+          }
+        }
         return res.json({ topic: doc })
       })
   }

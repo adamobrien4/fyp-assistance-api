@@ -7,6 +7,8 @@ const permit = require('../middleware/authorization')
 
 const Coordinator = require('../models/Coordinator')
 
+const {} = require('../schemas/routes/coordinatorSchema.js')
+
 const getAccessTokenOnBehalfOf = require('../graph/graph')
 
 const setupHeader = accessToken => {
@@ -23,7 +25,7 @@ router.get(
   permit(['Administrator', 'Coordinator']),
   async (req, res) => {
     await Coordinator.find()
-      .select({ _id: 1, displayName: 1, email: 1 })
+      .select('displayName email')
       .exec((err, docs) => {
         if (err) return res.status(500).json('could not retrieve coordinators')
 
@@ -113,15 +115,15 @@ router.post(
           'https://graph.microsoft.com/user.read+offline_access+AppRoleAssignment.ReadWrite.All+Directory.AccessAsUser.All+Directory.ReadWrite.All+Directory.Read.All',
           async accessToken => {
             // Get coordinator microsoft profile
-            let profileData = await axios
-              .get(
+            let profileData
+            try {
+              profileData = await axios.get(
                 `https://graph.microsoft.com/v1.0/users/${coordinator}`,
                 setupHeader(accessToken)
               )
-              .catch(err => {
-                console.log(err.response.status)
-                return res.json('not_found')
-              })
+            } catch (err) {
+              return res.json('not_found')
+            }
 
             if (profileData) {
               // User profile was found
