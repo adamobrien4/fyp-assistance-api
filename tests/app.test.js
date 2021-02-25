@@ -12,6 +12,7 @@ const Student = require('../models/Student')
 const Coordinator = require('../models/Coordinator')
 const Topic = require('../models/Topic')
 const { Proposal } = require('../models/Proposal')
+const Phase = require('../models/Phase')
 
 // Setup test environment with 'test' database
 setupDB('test')
@@ -275,6 +276,131 @@ describe('Endpoint Testing: /proposal', () => {
 
       expect(proposal.status === 'under_review').toBeTruthy()
       expect(resultingProposal.status === 'under_review').toBeTruthy()
+    })
+  })
+})
+
+describe('Endpoint Testing: /phase', () => {
+  describe('POST: /edit', () => {
+    let phases = [
+      {
+        _id: 1,
+        start_date: new Date(),
+        end_date: new Date()
+      },
+      {
+        _id: 2,
+        start_date: new Date(),
+        end_date: new Date()
+      },
+      {
+        _id: 3,
+        start_date: new Date(),
+        end_date: new Date()
+      },
+      {
+        _id: 4,
+        start_date: new Date(),
+        end_date: new Date()
+      }
+    ]
+
+    const expected = [
+      {
+        _id: 1,
+        start_date: new Date(Date.parse('01 Jan 2021 23:59:00 GMT')),
+        end_date: new Date(Date.parse('01 Feb 2021 23:54:00 GMT'))
+      },
+      {
+        _id: 2,
+        start_date: new Date(Date.parse('01 Feb 2021 23:59:00 GMT')),
+        end_date: new Date(Date.parse('01 Mar 2021 23:54:00 GMT'))
+      },
+      {
+        _id: 3,
+        start_date: new Date(Date.parse('01 Mar 2021 23:59:00 GMT')),
+        end_date: new Date(Date.parse('01 Apr 2021 23:54:00 GMT'))
+      },
+      {
+        _id: 4,
+        start_date: new Date(Date.parse('01 Apr 2021 23:59:00 GMT')),
+        end_date: new Date(
+          Date.parse('01 Apr 2021 23:59:00 GMT') + 1000 * 60 * 60 * 24 * 365
+        )
+      }
+    ]
+
+    it('should sucessfully update the system phases', async () => {
+      // Seed DB
+      await Phase.insertMany(phases)
+
+      const edits = [
+        {
+          phase: 1,
+          date: expected[0].start_date
+        },
+        {
+          phase: 2,
+          date: expected[1].start_date
+        },
+        {
+          phase: 3,
+          date: expected[2].start_date
+        },
+        {
+          phase: 4,
+          date: expected[3].start_date
+        }
+      ]
+
+      const res = await request.post('/phase/edit').send({ phases: edits })
+
+      const phaseDocs = await Phase.find({}).exec()
+      let resultingPhases = []
+      phaseDocs.forEach(p => {
+        resultingPhases[p._id - 1] = p._doc
+      })
+
+      expect(res.status).toBe(200)
+      expect(res.body).toBe('phases updated')
+
+      resultingPhases.forEach((p, index) => {
+        expect(p.start_date.getTime()).toBe(
+          expected[index].start_date.getTime()
+        )
+        expect(p.end_date.getTime()).toBe(expected[index].end_date.getTime())
+      })
+    })
+
+    it('should return an error when a phase start_time is after the next phase start_time', async () => {
+      // SeedDB
+      await Phase.insertMany(phases)
+
+      const edits = [
+        {
+          phase: 1,
+          date: new Date(Date.parse('01 Apr 2021 23:59:00 GMT'))
+        },
+        {
+          phase: 2,
+          date: new Date(Date.parse('01 Feb 2021 23:59:00 GMT'))
+        },
+        {
+          phase: 3,
+          date: new Date(Date.parse('01 Sep 2021 23:59:00 GMT'))
+        },
+        {
+          phase: 4,
+          date: new Date(Date.parse('01 Dec 2021 23:59:00 GMT'))
+        }
+      ]
+
+      const res = await request.post('/phase/edit').send({ phases: edits })
+
+      expect(res.status).toBe(400)
+      expect(res.body).toBe(
+        "Phase 1's start date must be before Phase 2's start date"
+      )
     })
   })
 })
