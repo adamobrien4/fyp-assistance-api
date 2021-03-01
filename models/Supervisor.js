@@ -24,10 +24,6 @@ const supervisorSchema = new Schema({
     type: String,
     unqiue: true,
     required: true
-  },
-  superviseStudentTopics: {
-    type: Boolean,
-    default: false
   }
 })
 

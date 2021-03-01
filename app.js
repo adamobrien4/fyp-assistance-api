@@ -1,6 +1,8 @@
 const express = require('express')
 const passport = require('passport')
 const axios = require('axios')
+const swaggerJSDoc = require('swagger-jsdoc')
+const swaggerUi = require('swagger-ui-express')
 
 const config = require('./config/config')
 
@@ -35,6 +37,39 @@ let bearerStrategy = new BearerStrategy(options, function (token, done) {
   done(null, {}, token)
 })
 
+// Swagger Setup
+const swaggerDefinition = {
+  openapi: '3.0.0',
+  info: {
+    title: 'FYP Assistance System API',
+    version: '1.0.0',
+    description:
+      'This is a REST API application made with Express. It serves as a data server for the FYP Assistance System React FrontEnd.',
+    license: {
+      name: 'Licensed Under MIT',
+      url: 'https://spdx.org/licenses/MIT.html'
+    },
+    contact: {
+      name: 'FYPAssistanceSystem',
+      url: 'https://jsonplaceholder.typicode.com'
+    }
+  },
+  servers: [
+    {
+      url: 'http://localhost:5000',
+      description: 'Development server'
+    }
+  ]
+}
+
+const swaggerOptions = {
+  swaggerDefinition,
+  // PAths to files containing OpenAPI definitions
+  apis: ['./routes/*.js']
+}
+
+const swaggerSpec = swaggerJSDoc(swaggerOptions)
+
 let app = express()
 app.use(express.json())
 app.use(mongoSanatize({ replaceWith: '_' }))
@@ -52,9 +87,12 @@ app.use(function (req, res, next) {
 })
 
 app.use((req, res, next) => {
+  // TODO: what is this
   req.phase = 1
   next()
 })
+
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec))
 
 app.use('/student', studentRouter)
 app.use('/supervisor', supervisorRouter)

@@ -24,6 +24,8 @@
     "mongoose": "^5.11.10",
     "passport": "^0.4.1",
     "passport-azure-ad": "^4.3.0",
+    "swagger-jsdoc": "^6.0.6",
+    "swagger-ui-express": "^4.1.6",
     "uuid-mongodb": "^2.4.1",
     "yup": "^0.32.8"
   },

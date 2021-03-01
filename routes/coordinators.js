@@ -10,6 +10,7 @@ const Coordinator = require('../models/Coordinator')
 const {} = require('../schemas/routes/coordinatorSchema.js')
 
 const getAccessTokenOnBehalfOf = require('../graph/graph')
+const { assignUser } = require('../utils/userAssignment/assignUser')
 
 const setupHeader = accessToken => {
   return {
@@ -49,31 +50,55 @@ router.post(
     let coordinatorId = req.body.coordinatorId
 
     Coordinator.findById(coordinatorId, (err, coordinator) => {
-      if (err) return res.status(500).json('could not find coordinator')
+      if (err) return res.status(500).json('error_while_retrieving_coordinator')
       // Ask MS Graph to remove appRoleAssignments from this user
       // Try to get access token for microsoft graph
-      getAccessTokenOnBehalfOf(
-        req.headers.authorization.substring(7),
-        'https://graph.microsoft.com/user.read+offline_access+AppRoleAssignment.ReadWrite.All+Directory.AccessAsUser.All+Directory.ReadWrite.All+Directory.Read.All',
-        accessToken => {
-          axios
-            .delete(
-              `https://graph.microsoft.com/v1.0/users/${coordinator._id}/appRoleAssignments/${coordinator.appRoleAssignmentId}`,
-              setupHeader(accessToken)
-            )
-            .then(() => {
-              Coordinator.findByIdAndRemove(coordinatorId, (err, doc) => {
-                if (err) return res.status(500).json('unable_to_remove')
 
-                return res.json('removed')
+      if (coordinator) {
+        getAccessTokenOnBehalfOf(
+          req.headers.authorization.substring(7),
+          'https://graph.microsoft.com/user.read+offline_access+AppRoleAssignment.ReadWrite.All+Directory.AccessAsUser.All+Directory.ReadWrite.All+Directory.Read.All',
+          accessToken => {
+            axios
+              .delete(
+                `https://graph.microsoft.com/v1.0/users/${coordinator._id}/appRoleAssignments/${coordinator.appRoleAssignmentId}`,
+                setupHeader(accessToken)
+              )
+              .then(() => {
+                Coordinator.findByIdAndRemove(coordinatorId, (err, doc) => {
+                  if (err) return res.status(500).json('unable_to_remove')
+
+                  return res.json('removed')
+                })
               })
-            })
-            .catch(err => {
-              console.log(err.response.data)
-              res.status(500).json('an_error_occurred')
-            })
-        }
-      )
+              .catch(err => {
+                console.log(err.response.data)
+                if (err?.response?.data) {
+                  switch (err.response.data.error.code) {
+                    case 'Request_ResourceNotFound':
+                      // Users appRoleAssignmentId could not be found
+                      // Delete user from database
+                      Coordinator.findByIdAndRemove(
+                        coordinatorId,
+                        (err, doc) => {
+                          if (err) {
+                            return res.status(500).json('unable_to_remove')
+                          }
+
+                          return res.json('removed')
+                        }
+                      )
+                      break
+                    default:
+                      return res.status(500).json('an_error_occurred')
+                  }
+                }
+              })
+          }
+        )
+      } else {
+        return res.status(400).json('coordinator_not_found')
+      }
     })
   }
 )
@@ -81,140 +106,38 @@ router.post(
 router.post(
   '/assign',
   passport.authenticate('oauth-bearer', { session: false }),
+  permit('Administrator'),
   async (req, res) => {
-    // TODO: Check users appRole to se if they have access to this route (Globally)
-
-    if (!req.authInfo.roles || !req.authInfo.roles.includes('Administrator')) {
-      console.log(req.authInfo.roles)
-      return res.status(401).json('User must be administrator')
-    }
-
     console.log(req.body.coordinator)
 
     // TODO: Verify that email is valid format
     let coordinator = req.body.coordinator
-    let coordinatorProfile = {}
+    // Query database to see if the coordinator already exists
+    const coordinatorDoc = await Coordinator.findOne({
+      email: coordinator
+    }).catch(err => {
+      console.log(err.message)
+      return res.status(500).json('An error occurred. Please try again later')
+    })
 
-    if (coordinator && coordinator.length > 0) {
-      // Query database to see if the coordinator already exists
-      Coordinator.findOne({ email: coordinator }, (err, doc) => {
-        if (err) {
-          console.log(err.message)
-          return res
-            .status(500)
-            .json('An error occurred. Please try again later')
-        }
-        // If doc exists
-        if (doc) {
-          return res.json('exists')
-        }
+    if (coordinatorDoc) {
+      // Coordinator already exists in database
+      return res.json({ coordinator: { email: coordinator, status: 'exists' } })
+    }
 
-        // Try to get access token for microsoft graph
-        getAccessTokenOnBehalfOf(
-          req.headers.authorization.substring(7),
-          'https://graph.microsoft.com/user.read+offline_access+AppRoleAssignment.ReadWrite.All+Directory.AccessAsUser.All+Directory.ReadWrite.All+Directory.Read.All',
-          async accessToken => {
-            // Get coordinator microsoft profile
-            let profileData
-            try {
-              profileData = await axios.get(
-                `https://graph.microsoft.com/v1.0/users/${coordinator}`,
-                setupHeader(accessToken)
-              )
-            } catch (err) {
-              return res.json('not_found')
-            }
+    // Try to get access token for microsoft graph
+    const assignResult = await assignUser(
+      'coordinator',
+      req.headers.authorization,
+      [{ email: coordinator, status: 'unknown' }]
+    )
 
-            if (profileData) {
-              // User profile was found
+    console.log('AssignResult', assignResult)
 
-              console.log(profileData.data)
-
-              coordinatorProfile.email = profileData.data.userPrincipalName
-              coordinatorProfile.azureId = profileData.data.id
-              coordinatorProfile.firstName = profileData.data?.givenName
-                ? profileData.data.givenName.charAt(0).toUpperCase() +
-                  profileData.data.givenName.substring(1)
-                : '<FirstName>'
-              coordinatorProfile.lastName = profileData.data?.surname
-                ? profileData.data.surname.charAt(0).toUpperCase() +
-                  profileData.data.surname.substring(1)
-                : '<LastName>'
-
-              coordinatorProfile.displayName = `${coordinatorProfile.firstName} ${coordinatorProfile.lastName}`
-
-              // Assign the FYP Coordinator custom admin role to the Coordinator account in order to allow them to assign app roles to other users
-              // TODO:
-
-              // TODO: Setup better way to implement the appRoleId in case it needs to be changed in the future
-              let data = {
-                principalId: coordinatorProfile.azureId,
-                principalType: 'User',
-                resourceId: `${config.azure.applicationResourceId}`,
-                appRoleId: config.azure.appRoles.coordinator
-              }
-
-              // Assign app role to coordinator
-              let appRoleResponse = await axios
-                .post(
-                  `https://graph.microsoft.com/v1.0/users/${data.principalId}/appRoleAssignments`,
-                  data,
-                  setupHeader(accessToken)
-                )
-                .catch(err => {
-                  console.log(err.response.data)
-                  if (
-                    err.response.data.error.message ===
-                    'Permission being assigned already exists on the object'
-                  ) {
-                    // User already has the app role assigned to them
-                    coordinatorProfile.status = 'already_assigned'
-                  } else {
-                    res.status(500).json('could not assign app role')
-                  }
-                })
-
-              if (appRoleResponse) {
-                coordinatorProfile.status = 'assigned'
-                coordinatorProfile.appRoleAssignmentId = appRoleResponse.data.id
-              }
-            } else {
-              console.log('profile_data not found')
-              return res.json('not_found')
-            }
-
-            console.log(coordinatorProfile)
-
-            // If the coordinator has been assigned or has previously been assigned add them to the database
-            // as they are curently not in the database at the moment (somehow, this case shouldnt actualy happen, but just in case)
-            if (
-              coordinatorProfile.status === 'assigned' ||
-              coordinatorProfile.status === 'already_assigned'
-            ) {
-              console.log(coordinatorProfile)
-              new Coordinator({
-                _id: MUUID.from(coordinatorProfile.azureId).toString('D'),
-                email: coordinatorProfile.email,
-                firstName: coordinatorProfile.firstName,
-                lastName: coordinatorProfile.lastName,
-                displayName: coordinatorProfile.displayName,
-                appRoleAssignmentId: coordinatorProfile.appRoleAssignmentId
-              }).save((err, _) => {
-                if (err) {
-                  console.log(err)
-                  return res.status(500).json('error saving to database')
-                }
-                res.json('success')
-              })
-            } else {
-              console.log('Unknown profile status: ', coordinatorProfile.status)
-              res.status(500).json('unknwon profile status')
-            }
-          }
-        )
-      })
+    if (assignResult instanceof Error) {
+      return res.status(assignResult.status).json(assignResult.message)
     } else {
-      res.status(400).json('No coordinator email provided')
+      return res.json({ coordinator: assignResult })
     }
   }
 )

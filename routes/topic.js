@@ -51,6 +51,32 @@ router.post('/test', async (req, res) => {
 })
 
 // TODO: Make search more efficient + clean code
+/**
+ * @swagger
+ *  /topic/search:
+ *   post:
+ *     summary: Retrieve a list of topics which match some specified search criteria
+ *     description: Description of the endpoint
+ *     responses:
+ *       200:
+ *         description: A list of topics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                topics:
+ *                  type: array
+ *                  items:
+ *                    type: object
+ *                    properties:
+ *                      title:
+ *                        type: string
+ *                      description:
+ *                        type: string
+ *                      code:
+ *                        type: string
+ */
 router.post(
   '/search',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -133,6 +159,12 @@ router.post(
 )
 
 // GET: Users owned Topics
+/**
+ * @swagger
+ *  /topic/me:
+ *   get:
+ *     summary: Retrieve a list of topics which the current user owns
+ */
 router.get(
   '/me',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -149,6 +181,19 @@ router.get(
 )
 
 // GET: Topic by topicCode
+/**
+ * @swagger
+ *  /topic/{code}:
+ *   get:
+ *     summary: Retrieve a list of topics which the current user owns
+ *     parameters:
+ *       - in: path
+ *         name: code
+ *         schema:
+ *           type: string
+ *           example: 123-abdfc-grjkr
+ *         required: true
+ */
 router.get(
   '/:code',
   passport.authenticate('oauth-bearer', { session: false }),
