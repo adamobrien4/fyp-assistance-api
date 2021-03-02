@@ -1,10 +1,15 @@
 const router = require('express').Router()
 const passport = require('passport')
 const axios = require('axios')
-const _pick = require('lodash/pick')
+
 const permit = require('../middleware/authorization')
+const isPhase = require('../middleware/phaseCheck')
 const validateResourceMW = require('../middleware/validateResource')
-const studentSchemas = require('../schemas/studentSchema')
+
+const {
+  assignStudentSchema,
+  deleteStudentSchema
+} = require('../schemas/routes/studentSchema')
 
 const Student = require('../models/Student')
 
@@ -15,6 +20,7 @@ const {
   assignUser
 } = require('../utils/userAssignment/assignUser')
 
+// GET: List of all students
 router.get(
   '/',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -31,129 +37,61 @@ router.get(
 )
 
 router.post(
-  '/get_profiles',
-  passport.authenticate('oauth-bearer', { session: false }),
-  async (req, res) => {
-    let requests = {
-      requests: []
-    }
-
-    if (req.body.students.length > 0) {
-      console.log(req.body.students)
-
-      let students = req.body.students
-
-      let i = 0
-      for (let email of students) {
-        requests.requests.push({
-          id: i,
-          method: 'GET',
-          url: `/users/${email}`
-        })
-        i++
-      }
-
-      getAccessTokenOnBehalfOf(
-        req.headers.authorization.substring(7),
-        'https://graph.microsoft.com/user.read',
-        accessToken => {
-          axios
-            .post(
-              'https://graph.microsoft.com/v1.0/$batch',
-              requests,
-              setupHeader(accessToken)
-            )
-            .then(resp => {
-              console.log(resp.data)
-
-              let data = []
-
-              for (let response of resp.data.responses) {
-                if (response.status === 200) {
-                  data.push(
-                    _pick(response.body, [
-                      'id',
-                      'userPrincipalName',
-                      'displayName'
-                    ])
-                  )
-                } else {
-                  data.push('Email had error')
-                }
-              }
-
-              res.json(data)
-            })
-            .catch(err => {
-              console.log(err)
-              res.json('Error')
-            })
-        }
-      )
-    }
-  }
-)
-
-router.post(
   '/assign',
   passport.authenticate('oauth-bearer', { session: false }),
+  isPhase(null),
   permit('Coordinator'),
+  validateResourceMW(assignStudentSchema),
   async (req, res) => {
     console.log(req.body.students)
 
-    if (req.body.students && req.body.students.length > 0) {
-      // Add a status of unknown to all recieved students
-      let students = req.body.students
-      for (let i = 0; i < students.length; i++) {
-        students[i].status = 'unknown'
-      }
+    // Add a status of unknown to all recieved students
+    let students = req.body.students
+    for (let i = 0; i < students.length; i++) {
+      students[i].status = 'unknown'
+    }
 
-      let query = {
-        email: {
-          $in: students.map(student => {
-            return student.email.toLowerCase()
-          })
-        }
-      }
-
-      console.log('Query:', query)
-
-      // Query database to see if any of these students already exist
-      let existingEmails = await Student.find(query)
-        .select({ email: 1, displayName: 1, _id: 0 })
-        .catch(err => {
-          console.log(err.message)
-          return res
-            .status(500)
-            .json('An error occurred. Please try again later')
+    let query = {
+      email: {
+        $in: students.map(student => {
+          return student.email.toLowerCase()
         })
-
-      console.log('ExistingEmails:', existingEmails)
-
-      // Set any existing students status to 'exists'
-      for (let student of existingEmails) {
-        var elemIndex = students.map(std => std.email).indexOf(student.email)
-        if (elemIndex > -1) {
-          students[elemIndex].status = 'exists'
-        }
       }
+    }
 
-      // Try to get access token for microsoft graph
-      const assignResult = await assignUser(
-        'student',
-        req.headers.authorization,
-        students
-      )
+    console.log('Query:', query)
 
-      console.log('AssignResult', assignResult)
+    // Query database to see if any of these students already exist
+    let existingEmails = await Student.find(query)
+      .select({ email: 1, displayName: 1, _id: 0 })
+      .catch(err => {
+        console.log(err.message)
+        return res.status(500).json('An error occurred. Please try again later')
+      })
 
-      if (assignResult instanceof Error) {
-        return res.status(assignResult.status).json(assignResult.message)
-      } else {
-        return res.json({ students: assignResult })
+    console.log('ExistingEmails:', existingEmails)
+
+    // Set any existing students status to 'exists'
+    for (let student of existingEmails) {
+      var elemIndex = students.map(std => std.email).indexOf(student.email)
+      if (elemIndex > -1) {
+        students[elemIndex].status = 'exists'
       }
+    }
+
+    // Try to get access token for microsoft graph
+    const assignResult = await assignUser(
+      'student',
+      req.headers.authorization,
+      students
+    )
+
+    console.log('AssignResult', assignResult)
+
+    if (assignResult instanceof Error) {
+      return res.status(assignResult.status).json(assignResult.message)
     } else {
-      res.status(400).json('No student emails provided')
+      return res.json({ students: assignResult })
     }
   }
 )
@@ -161,10 +99,10 @@ router.post(
 router.post(
   '/delete',
   passport.authenticate('oauth-bearer', { session: false }),
+  isPhase(null),
   permit('Coordinator'),
-  validateResourceMW(studentSchemas.deleteStudentSchema),
+  validateResourceMW(deleteStudentSchema),
   (req, res) => {
-    // TODO: Validate student id
     let studentId = req.body.studentId
 
     Student.findById(studentId).exec((err, studentDoc) => {

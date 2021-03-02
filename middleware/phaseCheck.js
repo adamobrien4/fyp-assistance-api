@@ -1,6 +1,10 @@
 const Phase = require('../models/Phase')
 
 const checkPhase = allowedPhase => async (req, res, next, testPhaseDoc) => {
+  if (allowedPhase === null) {
+    next()
+  }
+
   try {
     let phaseDoc
     if (process.env.NODE_ENV !== 'test') {

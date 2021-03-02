@@ -1,13 +1,16 @@
 const router = require('express').Router()
 const passport = require('passport')
-const config = require('../config/config')
 const axios = require('axios')
-const MUUID = require('uuid-mongodb')
+
 const permit = require('../middleware/authorization')
+const validateResourceMW = require('../middleware/validateResource')
 
 const Coordinator = require('../models/Coordinator')
 
-const {} = require('../schemas/routes/coordinatorSchema.js')
+const {
+  removeCoordinatorSchema,
+  assignCoordinatorSchema
+} = require('../schemas/routes/coordinatorSchema')
 
 const getAccessTokenOnBehalfOf = require('../graph/graph')
 const { assignUser } = require('../utils/userAssignment/assignUser')
@@ -43,10 +46,8 @@ router.post(
   '/remove',
   passport.authenticate('oauth-bearer', { session: false }),
   permit('Administrator'),
+  validateResourceMW(removeCoordinatorSchema),
   async (req, res) => {
-    if (!req.body.coordinatorId) {
-      return res.status(400).json('no_data_provided')
-    }
     let coordinatorId = req.body.coordinatorId
 
     Coordinator.findById(coordinatorId, (err, coordinator) => {
@@ -107,6 +108,7 @@ router.post(
   '/assign',
   passport.authenticate('oauth-bearer', { session: false }),
   permit('Administrator'),
+  validateResourceMW(assignCoordinatorSchema),
   async (req, res) => {
     console.log(req.body.coordinator)
 

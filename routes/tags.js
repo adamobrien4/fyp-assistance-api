@@ -5,7 +5,7 @@ const treeData = require('../utils/tagsTree')
 
 router.get(
   '/',
-  //passport.authenticate('oauth-bearer', { session: false }),
+  passport.authenticate('oauth-bearer', { session: false }),
   async (req, res) => {
     return res.json(treeData)
   }

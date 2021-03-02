@@ -1,6 +1,5 @@
 .env
 config.json
-config/
 node_modules
 coverage
 test.js

@@ -66,15 +66,47 @@ const assignUser = async (userType, authorizationHeader, users) => {
         if (userType === 'student') {
           userData.studentId = userData.email.split('@')[0]
         } else if (userType === 'supervisor') {
-          // TODO: Generate or have coordinator supply an abbreviuation for the supervisors name
-          var characters =
-            'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-          let charLen = characters.length
-          let abbr = ''
-          for (let i = 0; i < 4; i++) {
-            abbr += characters.charAt(Math.floor(Math.random() * charLen))
+          let abbreviationExist = true
+          // Loop until an abbreviation has been generated which does not exist
+          while (abbreviationExist) {
+            let dn = userData.displayName
+              .toLowerCase()
+              .replace(/[^0-9a-z ]/gi, '')
+              .split(' ')
+            userData.abbr = (
+              dn[0].substring(0, 1) + dn[1].substring(0, 3)
+            ).toUpperCase()
+
+            // Check if abbr is already assigned
+            let supervisorDoc = await Supervisor.findOne({
+              abbr: userData.abbr
+            }).catch(err => {
+              // Unable to query supervisors
+              console.error(err)
+              return new Error({
+                message: 'unable_query_supervisor_abbreviation',
+                statusCode: 500
+              })
+            })
+
+            if (supervisorDoc) {
+              // Found a supervisor with this abbreviation
+              // TODO: How to handle if the abbreviation is assigned already
+              var characters =
+                'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+              let charLen = characters.length
+              let abbr = ''
+              for (let i = 0; i < 4; i++) {
+                abbr += characters.charAt(Math.floor(Math.random() * charLen))
+              }
+              userData.abbr = abbr
+
+              abbreviationExist = false
+            } else {
+              // No supervisors have this abbreviation assigned
+              abbreviationExist = false
+            }
           }
-          userData.abbr = abbr
         } else if (userType === 'coordinator') {
           // Coordinator
         } else {

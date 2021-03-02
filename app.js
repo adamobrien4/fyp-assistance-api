@@ -28,8 +28,8 @@ const options = {
   issuer: `https://${config.azure.metadata.issuer}/${config.azure.tenantID}/`,
   clientID: config.azure.clientID,
   audience: config.azure.audience,
-  validateIssuer: config.azure.settings.validateIssuer,
-  passReqToCallback: config.azure.settings.passReqToCallback,
+  validateIssuer: !!config.azure.settings.validateIssuer,
+  passReqToCallback: !!config.azure.settings.passReqToCallback,
   loggingNoPII: false
 }
 

@@ -1,17 +1,19 @@
 const router = require('express').Router()
 const passport = require('passport')
-const config = require('../config/config')
 const axios = require('axios')
-const MUUID = require('uuid-mongodb')
+
 const permit = require('../middleware/authorization')
+const isPhase = require('../middleware/phaseCheck')
 const validateResourceMW = require('../middleware/validateResource')
 
 const Supervisor = require('../models/Supervisor')
 const Topic = require('../models/Topic')
 
 const {
+  assignSupervisorSchema,
   editSupervisorSchema,
-  studentProjectAvailibilitySchema
+  studentProjectAvailibilitySchema,
+  deleteSupervisorSchema
 } = require('../schemas/routes/supervisorSchema')
 
 const getAccessTokenOnBehalfOf = require('../graph/graph')
@@ -25,9 +27,11 @@ const setupHeader = accessToken => {
   }
 }
 
+// GET: List of all supervisors
 router.get(
   '/',
   passport.authenticate('oauth-bearer', { session: false }),
+  permit('Administrator'),
   (req, res) => {
     var query = Supervisor.find().select({ email: 1, _id: 1 })
     query.exec((err, docs) => {
@@ -37,9 +41,12 @@ router.get(
   }
 )
 
+// GET: Supervisors own account
 router.get(
   '/me',
   passport.authenticate('oauth-bearer', { session: false }),
+  isPhase(null),
+  permit('Supervisor'),
   (req, res) => {
     Supervisor.findOne({ _id: req.authInfo.oid }).exec((err, doc) => {
       if (err) {
@@ -50,70 +57,68 @@ router.get(
   }
 )
 
-// GET: Assign new supervisor
+// POST: Assign new supervisor
 router.post(
   '/assign',
   passport.authenticate('oauth-bearer', { session: false }),
+  isPhase(null),
   permit('Coordinator'),
+  validateResourceMW(assignSupervisorSchema),
   async (req, res) => {
     console.log(req.body.supervisors)
 
-    if (req.body.supervisors && req.body.supervisors.length > 0) {
-      // Add a status of unknown to all recieved supervisors
-      let supervisors = req.body.supervisors
-      for (let i = 0; i < supervisors.length; i++) {
-        supervisors[i].status = 'unknown'
-      }
+    // Add a status of unknown to all recieved supervisors
+    let supervisors = req.body.supervisors
+    for (let i = 0; i < supervisors.length; i++) {
+      supervisors[i].status = 'unknown'
+    }
 
-      // Query database to see if any of these supervisors already exist
-      let existingEmails = await Supervisor.find({
-        email: {
-          $in: supervisors.map(supervisor => {
-            return supervisor.email.toLowerCase()
-          })
-        }
-      })
-        .select({ email: 1, displayName: 1, _id: 0 })
-        .catch(err => {
-          console.log(err.message)
-          return res
-            .status(500)
-            .json('An error occurred. Please try again later')
+    // Query database to see if any of these supervisors already exist
+    let existingEmails = await Supervisor.find({
+      email: {
+        $in: supervisors.map(supervisor => {
+          return supervisor.email.toLowerCase()
         })
-
-      // Set any existing supervisors status to 'exists'
-      for (let supervisor of existingEmails) {
-        var elemIndex = supervisors
-          .map(spvsr => spvsr.email)
-          .indexOf(supervisor.email)
-        if (elemIndex > -1) {
-          supervisors[elemIndex].status = 'exists'
-        }
       }
+    })
+      .select({ email: 1, displayName: 1, _id: 0 })
+      .catch(err => {
+        console.log(err.message)
+        return res.status(500).json('An error occurred. Please try again later')
+      })
 
-      // Try to get access token for microsoft graph
-      let assignResult = await assignUser(
-        'supervisor',
-        req.headers.authorization,
-        supervisors
-      )
-
-      console.log('AssignResult', assignResult)
-
-      if (assignResult instanceof Error) {
-        return res.status(assignResult.status).json(assignResult.message)
-      } else {
-        return res.json({ supervisors: assignResult })
+    // Set any existing supervisors status to 'exists'
+    for (let supervisor of existingEmails) {
+      var elemIndex = supervisors
+        .map(spvsr => spvsr.email)
+        .indexOf(supervisor.email)
+      if (elemIndex > -1) {
+        supervisors[elemIndex].status = 'exists'
       }
+    }
+
+    // Try to get access token for microsoft graph
+    let assignResult = await assignUser(
+      'supervisor',
+      req.headers.authorization,
+      supervisors
+    )
+
+    console.log('AssignResult', assignResult)
+
+    if (assignResult instanceof Error) {
+      return res.status(assignResult.status).json(assignResult.message)
     } else {
-      res.status(400).json('No supervisor emails provided')
+      return res.json({ supervisors: assignResult })
     }
   }
 )
 
+// POST: Edit the supervisors own account
 router.post(
   '/me/edit',
   passport.authenticate('oauth-bearer', { session: false }),
+  isPhase(null),
   permit('Supervisor'),
   validateResourceMW(editSupervisorSchema),
   (req, res) => {
@@ -130,10 +135,12 @@ router.post(
   }
 )
 
+// POST: Toggle the supervisors availibility to supervisor student defined topics
 router.post(
   '/me/studentProjectAvailibility',
   passport.authenticate('oauth-bearer', { session: false }),
-  permit('Supervisor'),
+  // isPhase(3),
+  permit(['Supervisor', 'Coordinator']),
   validateResourceMW(studentProjectAvailibilitySchema),
   async (req, res) => {
     if (req.body.active) {
@@ -199,6 +206,7 @@ router.post(
 router.get(
   '/me/studentProjectAvailibility',
   passport.authenticate('oauth-bearer', { session: false }),
+  isPhase(null),
   permit('Supervisor'),
   async (req, res) => {
     Topic.findOne({
@@ -222,7 +230,9 @@ router.get(
 router.post(
   '/delete',
   passport.authenticate('oauth-bearer', { session: false }),
+  isPhase(null),
   permit('Coordinator'),
+  validateResourceMW(deleteSupervisorSchema),
   (req, res) => {
     // TODO: Validate supervisor id
     let supervisorId = req.body.supervisorId
@@ -247,10 +257,13 @@ router.post(
               )
               .then(() => {
                 Supervisor.findByIdAndRemove(supervisorId, (err, doc) => {
-                  if (err)
+                  if (err) {
                     return res
                       .status(500)
                       .json('could not remove supervisor from database')
+                  }
+
+                  // TODO: Remove/Archive all linked topics/proposals etc
 
                   return res.json('supervisor removed')
                 })
@@ -266,30 +279,11 @@ router.post(
   }
 )
 
-// GET: Supervisors who are available to supervise Custom Student Topics
-router.get(
-  '/availableCustomTopic',
-  passport.authenticate('oauth-bearer', { session: false }),
-  permit('Student'),
-  (req, res) => {
-    Supervisor.find({ superviseStudentTopics: true })
-      .select('displayName')
-      .exec((err, docs) => {
-        if (err) {
-          return res
-            .status(500)
-            .json('could not retrieve list of available supervisors')
-        }
-
-        return res.json({ supervisors: docs })
-      })
-  }
-)
-
 // GET: List of supervisors for dropdown / select etc
 router.get(
   '/list',
   passport.authenticate('oauth-bearer', { session: false }),
+  isPhase(null),
   (req, res) => {
     Supervisor.find()
       .select('displayName')

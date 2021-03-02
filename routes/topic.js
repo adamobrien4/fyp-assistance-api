@@ -199,7 +199,6 @@ router.get(
   passport.authenticate('oauth-bearer', { session: false }),
   permit(['Student', 'Supervisor', 'Coordinator']),
   (req, res) => {
-    console.log('o')
     Topic.findOne({ code: req.params.code })
       .populate('supervisor', 'displayName')
       .exec(async (err, doc) => {
@@ -209,7 +208,7 @@ router.get(
 
         if (req.authInfo.roles.includes('Student')) {
           // Check if student has created proposal for this topic or not already
-          let hasProposal = await Proposal.find({
+          let hasProposal = await Proposal.findOne({
             topic: doc._id,
             student: req.authInfo.oid
           })

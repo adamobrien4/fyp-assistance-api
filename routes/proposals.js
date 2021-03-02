@@ -1,12 +1,9 @@
 const router = require('express').Router()
 const passport = require('passport')
 
-const {
-  Proposal,
-  CustomProposal,
-  SupervisorProposal
-} = require('../models/Proposal')
+const { Proposal, CustomProposal } = require('../models/Proposal')
 const Topic = require('../models/Topic')
+
 const permit = require('../middleware/authorization')
 const validateResourceMW = require('../middleware/validateResource')
 const isPhase = require('../middleware/phaseCheck')
@@ -17,12 +14,11 @@ const {
   proposalResponseSchema
 } = require('../schemas/routes/proposalSchema')
 
-const _ = require('lodash')
-
 // GET: Get all requesting student's proposals
 router.get(
   '/me',
   passport.authenticate('oauth-bearer', { session: false }),
+  //isPhase(4),
   permit('Student'),
   async (req, res) => {
     Proposal.find({ student: req.authInfo.oid })
@@ -43,6 +39,7 @@ router.get(
 router.get(
   '/:proposalId',
   passport.authenticate('oauth-bearer', { session: false }),
+  //isPhase(4),
   (req, res) => {
     // Get proposal for both custom and supervisor defined topics
 
@@ -85,6 +82,7 @@ router.get(
 router.post(
   '/add',
   passport.authenticate('oauth-bearer', { session: false }),
+  isPhase([3, 4]),
   permit('Student'),
   validateResourceMW(addProposalSchema),
   async (req, res) => {
@@ -153,6 +151,7 @@ router.post(
 router.post(
   '/edit/:id',
   passport.authenticate('oauth-bearer', { session: false }),
+  // isPhase([3,4]),
   permit('Student'),
   validateResourceMW(editProposalSchema),
   (req, res) => {
@@ -199,9 +198,8 @@ router.post(
 router.post(
   '/:id/upgrade',
   passport.authenticate('oauth-bearer', { session: false }),
+  // isPhase([3,4]),
   permit('Student'),
-  // TODO: Create schema for upgrade route
-  //validateResourceMW(editProposalSchema),
   (req, res) => {
     Proposal.findOne({ _id: req.params.id }).exec((err, doc) => {
       if (err) {
@@ -241,10 +239,9 @@ router.post(
 router.post(
   '/:id/downgrade',
   passport.authenticate('oauth-bearer', { session: false }),
+  // isPhase([3,4]),
   permit('Student'),
   isPhase(3),
-  // TODO: Create schema for downgrade route
-  //validateResourceMW(editProposalSchema),
   (req, res) => {
     Proposal.findOne({ _id: req.params.id, status: 'submitted' }).exec(
       (err, doc) => {
@@ -272,6 +269,7 @@ router.post(
 router.post(
   '/respond/:id',
   passport.authenticate('oauth-bearer', { session: false }),
+  // isPhase(4),
   permit(['Supervisor', 'Coordinator']),
   validateResourceMW(proposalResponseSchema),
   async (req, res) => {
