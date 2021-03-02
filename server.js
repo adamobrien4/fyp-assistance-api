@@ -16,6 +16,8 @@ db.once('open', () => {
 
 const app = require('./app')
 
+console.log(process.env)
+
 const port = process.env.PORT || 5000
 
 app.listen(port, () => {
