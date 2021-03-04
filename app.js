@@ -92,6 +92,10 @@ app.use((req, res, next) => {
   next()
 })
 
+app.get('/ping', (req, res) => {
+  return res.json('server available')
+})
+
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec))
 
 app.use('/student', studentRouter)

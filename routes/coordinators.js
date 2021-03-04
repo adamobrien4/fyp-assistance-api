@@ -50,55 +50,58 @@ router.post(
   async (req, res) => {
     let coordinatorId = req.body.coordinatorId
 
-    Coordinator.findById(coordinatorId, (err, coordinator) => {
-      if (err) return res.status(500).json('error_while_retrieving_coordinator')
+    Coordinator.findById(coordinatorId, async (err, coordinator) => {
+      if (err) {
+        return res.status(500).json('error_while_retrieving_coordinator')
+      }
       // Ask MS Graph to remove appRoleAssignments from this user
       // Try to get access token for microsoft graph
 
       if (coordinator) {
-        getAccessTokenOnBehalfOf(
+        const accessToken = await getAccessTokenOnBehalfOf(
           req.headers.authorization.substring(7),
-          'https://graph.microsoft.com/user.read+offline_access+AppRoleAssignment.ReadWrite.All+Directory.AccessAsUser.All+Directory.ReadWrite.All+Directory.Read.All',
-          accessToken => {
-            axios
-              .delete(
-                `https://graph.microsoft.com/v1.0/users/${coordinator._id}/appRoleAssignments/${coordinator.appRoleAssignmentId}`,
-                setupHeader(accessToken)
-              )
-              .then(() => {
-                Coordinator.findByIdAndRemove(coordinatorId, (err, doc) => {
-                  if (err) return res.status(500).json('unable_to_remove')
+          'https://graph.microsoft.com/user.read+offline_access+AppRoleAssignment.ReadWrite.All+Directory.AccessAsUser.All+Directory.ReadWrite.All+Directory.Read.All'
+        ).catch(err => {
+          console.error(err)
+          return res.status(500).json('error_access_token')
+        })
 
-                  return res.json('removed')
-                })
+        if (accessToken) {
+          axios
+            .delete(
+              `https://graph.microsoft.com/v1.0/users/${coordinator._id}/appRoleAssignments/${coordinator.appRoleAssignmentId}`,
+              setupHeader(accessToken)
+            )
+            .then(() => {
+              Coordinator.findByIdAndRemove(coordinatorId, (err, doc) => {
+                if (err) return res.status(500).json('unable_to_remove')
+
+                return res.json('removed')
               })
-              .catch(err => {
-                console.log(err.response.data)
-                if (err?.response?.data) {
-                  switch (err.response.data.error.code) {
-                    case 'Request_ResourceNotFound':
-                      // Users appRoleAssignmentId could not be found
-                      // Delete user from database
-                      Coordinator.findByIdAndRemove(
-                        coordinatorId,
-                        (err, doc) => {
-                          if (err) {
-                            return res.status(500).json('unable_to_remove')
-                          }
+            })
+            .catch(err => {
+              console.log(err.response.data)
+              if (err?.response?.data) {
+                switch (err.response.data.error.code) {
+                  case 'Request_ResourceNotFound':
+                    // Users appRoleAssignmentId could not be found
+                    // Delete user from database
+                    Coordinator.findByIdAndRemove(coordinatorId, (err, doc) => {
+                      if (err) {
+                        return res.status(500).json('unable_to_remove')
+                      }
 
-                          return res.json('removed')
-                        }
-                      )
-                      break
-                    default:
-                      return res.status(500).json('an_error_occurred')
-                  }
+                      return res.json('removed')
+                    })
+                    break
+                  default:
+                    return res.status(500).json('an_error_occurred')
                 }
-              })
-          }
-        )
-      } else {
-        return res.status(400).json('coordinator_not_found')
+              }
+            })
+        } else {
+          return res.status(500).json('error_no_access_token')
+        }
       }
     })
   }

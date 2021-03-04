@@ -36,6 +36,7 @@ router.get(
   }
 )
 
+// POST: Assign
 router.post(
   '/assign',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -96,6 +97,7 @@ router.post(
   }
 )
 
+// POST: Delete
 router.post(
   '/delete',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -105,62 +107,66 @@ router.post(
   (req, res) => {
     let studentId = req.body.studentId
 
-    Student.findById(studentId).exec((err, studentDoc) => {
+    console.log(studentId)
+
+    Student.findById(studentId).exec(async (err, studentDoc) => {
       if (err) {
         return res.status(500).json('could not retrieve student at this time')
       }
 
       if (studentDoc) {
         // Try to get access token for microsoft graph
-        getAccessTokenOnBehalfOf(
+        let accessToken = await getAccessTokenOnBehalfOf(
           req.headers.authorization.substring(7),
-          'https://graph.microsoft.com/user.read+offline_access+AppRoleAssignment.ReadWrite.All+Directory.AccessAsUser.All+Directory.ReadWrite.All+Directory.Read.All',
-          async accessToken => {
-            axios
-              .delete(
-                `https://graph.microsoft.com/v1.0/users/${studentId}/appRoleAssignments/${studentDoc.appRoleAssignmentId}`,
-                setupHeader(accessToken)
-              )
-              .then(() => {
-                Student.findByIdAndRemove(studentId, (err, doc) => {
-                  if (err) {
-                    return res.status(500).json('error_retrieving_student')
-                  }
+          'https://graph.microsoft.com/user.read+offline_access+AppRoleAssignment.ReadWrite.All+Directory.AccessAsUser.All+Directory.ReadWrite.All+Directory.Read.All'
+        ).catch(err => {
+          console.error(err)
+          return res.status(500).json('error_access_token')
+        })
 
-                  return res.json('removed')
-                })
-              })
-              .catch(err => {
-                if (err?.response?.data) {
-                  switch (err.response.data.error.code) {
-                    case 'Request_ResourceNotFound':
-                      // appRoleAssignmentId could not be found, remove student from DB
-                      Student.deleteOne({ _id: studentId }).exec((err, doc) => {
-                        if (err) {
-                          return res
-                            .status(500)
-                            .json('error_while_retrieving_student')
-                        }
-
-                        return res.json('removed')
-                      })
-                      break
-                    default:
-                      console.log(err.response.data)
-                      res.status(500).json('an_error_occurred')
-                  }
+        if (accessToken) {
+          axios
+            .delete(
+              `https://graph.microsoft.com/v1.0/users/${studentId}/appRoleAssignments/${studentDoc.appRoleAssignmentId}`,
+              setupHeader(accessToken)
+            )
+            .then(() => {
+              Student.findByIdAndRemove(studentId, (err, doc) => {
+                if (err) {
+                  return res.status(500).json('error_retrieving_student')
                 }
+
+                return res.json('removed')
               })
-          }
-        )
+            })
+            .catch(err => {
+              if (err?.response?.data) {
+                switch (err.response.data.error.code) {
+                  case 'Request_ResourceNotFound':
+                    // appRoleAssignmentId could not be found, remove student from DB
+                    Student.deleteOne({ _id: studentId }).exec((err, doc) => {
+                      if (err) {
+                        return res
+                          .status(500)
+                          .json('error_while_retrieving_student')
+                      }
+
+                      return res.json('removed')
+                    })
+                    break
+                  default:
+                    console.log(err.response.data)
+                    res.status(500).json('an_error_occurred')
+                }
+              }
+            })
+        } else {
+          return res.status(500).json('error_no_access_token')
+        }
       } else {
-        return res.status(400).json('student_not_found')
+        return res.status(500).json('error_retrieving_student')
       }
     })
-
-    // Remove app role from student in Azure AD
-
-    // On success remove student from database
   }
 )
 

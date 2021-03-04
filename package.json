@@ -11,7 +11,7 @@
     "posttest": "start mongo admin --eval \"use admin && db.shutdownServer()\"",
     "test:watch": "set NODE_ENV=test jest --watch",
     "start": "node server.js",
-    "dev": "start mongod -dbpath=C:\\data\\db && set NODE_ENV=dev&& nodemon server.js"
+    "start:dev": "start mongod -dbpath=C:\\data\\db && set NODE_ENV=dev&& nodemon server.js"
   },
   "keywords": [],
   "author": "",

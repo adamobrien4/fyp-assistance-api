@@ -172,8 +172,32 @@ router.get(
   async (req, res) => {
     Topic.find({ supervisor: req.authInfo.oid })
       .select('-supervisor -__v')
-      .exec((err, docs) => {
+      .exec(async (err, docs) => {
         if (err) return res.status(500).json('could not retrieve proposals')
+
+        if (docs) {
+          let topicIds = docs.map(d => d._id)
+
+          let proposalInfo = await Proposal.aggregate([
+            {
+              $match: { topic: { $in: [...topicIds] } }
+            },
+            {
+              $group: { _id: '$topic', count: { $sum: 1 } }
+            }
+          ])
+
+          let countInfo = {}
+
+          proposalInfo.forEach(el => (countInfo[el._id] = { count: el.count }))
+
+          let result = docs.map(t => ({
+            ...t._doc,
+            proposalCount: countInfo[t._id]?.count ? countInfo[t._id]?.count : 0
+          }))
+
+          docs = result
+        }
 
         return res.json({ topics: docs })
       })
@@ -229,14 +253,15 @@ router.post(
   '/add',
   passport.authenticate('oauth-bearer', { session: false }),
   isPhase(2),
-  permit('Supervisor'),
+  permit(['Supervisor', 'Coordinator']),
   validateResourceMW(addTopicSchema),
   async (req, res) => {
     // TODO: Validate topic data before using it
     let topicData = {
       title: req.body.title,
       description: req.body.description,
-      tags: req.body.tags
+      tags: req.body.tags,
+      status: 'active'
     }
 
     topicData.supervisor = req.authInfo.oid
@@ -262,7 +287,7 @@ router.post(
 router.post(
   '/edit/:id',
   passport.authenticate('oauth-bearer', { session: false }),
-  permit('Supervisor'),
+  permit(['Supervisor', 'Coordinator']),
   (req, res) => {
     // TODO: Sanatise req.body before updating topic
     Topic.findByIdAndUpdate(req.params.id, { $set: req.body }).exec(
@@ -281,7 +306,7 @@ router.post(
 router.post(
   '/submit',
   passport.authenticate('oauth-bearer', { session: false }),
-  permit('Supervisor'),
+  permit(['Supervisor', 'Coordinator']),
   (req, res) => {
     // TODO: Sanatise req.body before updating topic
     Topic.find({ supervisor: req.authInfo.oid, status: 'suggestion' })
@@ -308,7 +333,7 @@ router.post(
 router.get(
   '/proposals/:id',
   passport.authenticate('oauth-bearer', { session: false }),
-  permit('Supervisor'),
+  permit(['Supervisor', 'Coordinator']),
   isPhase(4),
   (req, res) => {
     // TODO: Only find proposals with specific type (submitted, accepted, rejected)

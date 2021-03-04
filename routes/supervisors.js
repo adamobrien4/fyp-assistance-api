@@ -31,11 +31,13 @@ const setupHeader = accessToken => {
 router.get(
   '/',
   passport.authenticate('oauth-bearer', { session: false }),
-  permit('Administrator'),
+  permit(['Administrator', 'Coordinator']),
   (req, res) => {
     var query = Supervisor.find().select({ email: 1, _id: 1 })
     query.exec((err, docs) => {
-      if (err) return res.status(404).json('No supervisors found')
+      if (err) {
+        return res.status(500).json('could not retrieve supervisors')
+      }
       res.json({ supervisors: docs })
     })
   }
@@ -157,10 +159,10 @@ router.post(
           try {
             new Topic({
               supervisor: req.authInfo.oid,
-              status: 'suggestion',
+              status: 'active',
               title: 'Student Proposal Topic',
               description: '<UNSET>',
-              tags: ['Student Definable'],
+              tags: [],
               additionalNotes: '',
               targetCourses: [],
               type: 'studentTopic'
@@ -175,7 +177,7 @@ router.post(
         } else {
           Topic.updateOne(
             { supervisor: req.authInfo.oid, type: 'studentTopic' },
-            { status: 'suggestion' }
+            { status: 'active' }
           ).exec((err, doc) => {
             if (err) {
               console.errror(err)
@@ -237,7 +239,7 @@ router.post(
     // TODO: Validate supervisor id
     let supervisorId = req.body.supervisorId
 
-    Supervisor.findById(supervisorId).exec((err, supervisorDoc) => {
+    Supervisor.findById(supervisorId).exec(async (err, supervisorDoc) => {
       if (err) {
         return res
           .status(500)
@@ -246,34 +248,40 @@ router.post(
 
       if (supervisorDoc) {
         // Try to get access token for microsoft graph
-        getAccessTokenOnBehalfOf(
+        const accessToken = await getAccessTokenOnBehalfOf(
           req.headers.authorization.substring(7),
-          'https://graph.microsoft.com/user.read+offline_access+AppRoleAssignment.ReadWrite.All+Directory.AccessAsUser.All+Directory.ReadWrite.All+Directory.Read.All',
-          async accessToken => {
-            axios
-              .delete(
-                `https://graph.microsoft.com/v1.0/users/${supervisorId}/appRoleAssignments/${supervisorDoc.appRoleAssignmentId}`,
-                setupHeader(accessToken)
-              )
-              .then(() => {
-                Supervisor.findByIdAndRemove(supervisorId, (err, doc) => {
-                  if (err) {
-                    return res
-                      .status(500)
-                      .json('could not remove supervisor from database')
-                  }
+          'https://graph.microsoft.com/user.read+offline_access+AppRoleAssignment.ReadWrite.All+Directory.AccessAsUser.All+Directory.ReadWrite.All+Directory.Read.All'
+        ).catch(err => {
+          console.error(err)
+          return res.status(500).json('error_access_token')
+        })
 
-                  // TODO: Remove/Archive all linked topics/proposals etc
+        if (accessToken) {
+          axios
+            .delete(
+              `https://graph.microsoft.com/v1.0/users/${supervisorId}/appRoleAssignments/${supervisorDoc.appRoleAssignmentId}`,
+              setupHeader(accessToken)
+            )
+            .then(() => {
+              Supervisor.findByIdAndRemove(supervisorId, (err, doc) => {
+                if (err) {
+                  return res
+                    .status(500)
+                    .json('could not remove supervisor from database')
+                }
 
-                  return res.json('supervisor removed')
-                })
+                // TODO: Remove/Archive all linked topics/proposals etc
+
+                return res.json('supervisor removed')
               })
-              .catch(err => {
-                console.log(err.response.data)
-                res.status(500).json('an_error_occurred')
-              })
-          }
-        )
+            })
+            .catch(err => {
+              console.log(err.response.data)
+              res.status(500).json('an_error_occurred')
+            })
+        } else {
+          return res.status(500).json('error_no_access_token')
+        }
       }
     })
   }

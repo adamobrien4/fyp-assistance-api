@@ -22,7 +22,7 @@ const topicSchema = new Schema({
       'assigned',
       'prev_term'
     ],
-    default: 'draft'
+    default: 'active'
   },
   title: {
     type: String,
