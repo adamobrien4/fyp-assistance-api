@@ -290,10 +290,25 @@ router.post(
 
       try {
         await proposalDoc.save()
-        return res.json('update successful')
       } catch (err) {
         console.error(err)
         return res.status(500).json('could not update proposal status')
+      }
+
+      if (req.body.responseType === 'accepted') {
+        const topic = await Topic.findOne({ _id: proposalDoc.topic._id }).exec()
+
+        if (topic) {
+          topic.status = 'assigned'
+          try {
+            await topic.save()
+            return res.json('update success')
+          } catch (e) {
+            return res.status(500).json('could not update topic')
+          }
+        } else {
+          return res.status(500).json('could not retrieve topic')
+        }
       }
     } else {
       return res.status(400).json('could not find proposal')

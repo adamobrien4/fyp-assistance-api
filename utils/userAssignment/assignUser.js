@@ -155,7 +155,7 @@ const assignUser = async (userType, authorizationHeader, users) => {
                 })
               let appRoleId
               for (let assignment of getAppRoleAssignments.data.value) {
-                if (assignment.appRoleId === config.azure.appRoles.student) {
+                if (assignment.appRoleId === config.azure.appRoles[userType]) {
                   appRoleId = assignment.id
                   break
                 }

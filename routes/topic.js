@@ -180,7 +180,7 @@ router.get(
 
           let proposalInfo = await Proposal.aggregate([
             {
-              $match: { topic: { $in: [...topicIds] } }
+              $match: { topic: { $in: [...topicIds] }, status: 'submitted' }
             },
             {
               $group: { _id: '$topic', count: { $sum: 1 } }
@@ -219,11 +219,11 @@ router.get(
  *         required: true
  */
 router.get(
-  '/:code',
+  '/:id',
   passport.authenticate('oauth-bearer', { session: false }),
   permit(['Student', 'Supervisor', 'Coordinator']),
   (req, res) => {
-    Topic.findOne({ code: req.params.code })
+    Topic.findOne({ _id: req.params.id })
       .populate('supervisor', 'displayName')
       .exec(async (err, doc) => {
         if (err) {
