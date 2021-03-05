@@ -10,7 +10,10 @@ const addTopicSchema = yup.object({
   chooseMessage: yup.string(),
   targetCourses: yup.array(yup.string()),
   environment: yup.string(),
-  languages: yup.string()
+  languages: yup.string(),
+  ownerType: yup
+    .string()
+    .oneOf(['supervisor', 'coordinator'], 'ownerType is invalid')
 })
 
 const searchTopicSchema = yup.object({

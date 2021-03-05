@@ -7,11 +7,6 @@ const topicSchema = new Schema({
     required: true,
     ref: 'Supervisor'
   },
-  code: {
-    type: String,
-    required: true,
-    default: '<unset>'
-  },
   status: {
     type: String,
     enum: [
@@ -47,6 +42,11 @@ const topicSchema = new Schema({
     enum: ['regular', 'studentTopic'],
     default: 'regular',
     required: true
+  },
+  ownerType: {
+    type: String,
+    enum: ['supervisor', 'coordinator'],
+    default: 'supervisor'
   }
 })
 

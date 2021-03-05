@@ -1,48 +1,58 @@
 module.exports = [
   {
-    title: 'Item1',
-    value: 'Item1',
-    key: 'Item1',
+    title: 'Research',
+    value: 'Research',
+    key: 'Research',
     children: [
       {
-        title: 'SubItem1',
-        value: 'SubItem1',
-        key: 'SubItem1',
-        children: [
-          {
-            title: 'SubSubItem1',
-            value: 'SubSubItem1',
-            key: 'SubSubItem1'
-          }
-        ]
+        title: 'Predominantly Research',
+        value: 'Predominantly Research',
+        key: 'Predominantly Research'
       },
       {
-        title: 'SubItem2',
-        value: 'SubItem2',
-        key: 'SubItem2',
-        children: [
-          {
-            title: 'SubSubItem2',
-            value: 'SubSubItem2',
-            key: 'SubSubItem2'
-          }
-        ]
+        title: 'Partially Research',
+        value: 'Partially Research',
+        key: 'Partially Research'
       }
     ]
   },
   {
-    title: 'Item2',
-    value: 'Item2',
-    key: 'Item2'
+    title: 'App Development',
+    value: 'App Development',
+    key: 'App Development',
+    children: [
+      {
+        title: 'Apple IOS',
+        value: 'Apple IOS',
+        key: 'Apple IOS'
+      },
+      {
+        title: 'Android',
+        value: 'Android',
+        key: 'Android'
+      }
+    ]
   },
   {
-    title: 'Item3',
-    value: 'Item3',
-    key: 'Item3'
+    title: 'Software Development',
+    value: 'Software Development',
+    key: 'Software Development',
+    children: [
+      {
+        title: 'Java',
+        value: 'Java',
+        key: 'Java'
+      },
+      {
+        title: 'C++',
+        value: 'C++',
+        key: 'C++'
+      }
+    ]
   },
   {
-    title: 'Item4',
-    value: 'Item4',
-    key: 'Item4'
+    title: 'Website Development',
+    value: 'Website Development',
+    key: 'Website Development'
   }
 ]

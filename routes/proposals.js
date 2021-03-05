@@ -60,7 +60,10 @@ router.get(
 
         return res.status(403).json('Unauthorised')
       })
-    } else if (req.authInfo.roles.includes('Supervisor')) {
+    } else if (
+      req.authInfo.roles.includes('Supervisor') ||
+      req.authInfo.roles.includes('Coordinator')
+    ) {
       Proposal.findOne({ _id: req.params.proposalId })
         .populate('topic')
         .exec((err, proposal) => {

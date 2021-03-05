@@ -5,6 +5,8 @@ const { ObjectId } = require('mongoose').Types
 const Topic = require('../models/Topic')
 const Tag = require('../models/Tag')
 const { Proposal, SupervisorProposal } = require('../models/Proposal')
+const Supervisor = require('../models/Supervisor')
+const Coordinator = require('../models/Coordinator')
 
 const permit = require('../middleware/authorization')
 const validateResourceMW = require('../middleware/validateResource')
@@ -16,38 +18,23 @@ const {
 } = require('../schemas/routes/topicsSchema')
 
 router.post('/test', async (req, res) => {
-  let topics = await Topic.find({})
-    .select('title description code supervisor type tags targetCourses')
-    .exec()
-  let topicIds = []
+  let topics = await Topic.find({}).exec()
 
-  topics.forEach(t => {
-    topicIds.push(t._id)
-  })
-
-  let proposals = await Proposal.aggregate([
-    {
-      $match: { topic: { $in: [...topicIds] } }
-    },
-    {
-      $group: { _id: '$topic', count: { $sum: 1 } }
+  for (let i = 0; i < topics.length; i++) {
+    if (topics[i].ownerType === 'supervisor') {
+      topics[i] = await Topic.populate(topics[i], {
+        path: 'supervisor',
+        model: 'Supervisor'
+      })
+    } else {
+      topics[i] = await Topic.populate(topics[i], {
+        path: 'supervisor',
+        model: 'Coordinator'
+      })
     }
-  ])
+  }
 
-  let result = {}
-
-  proposals.forEach(el => {
-    result[el._id] = { count: el.count }
-  })
-
-  console.log(result)
-
-  let s = topics.map(t => ({
-    ...t._doc,
-    proposalCount: result[t._id]?.count ? result[t._id]?.count : 0
-  }))
-
-  res.json(s)
+  res.json(topics)
 })
 
 // TODO: Make search more efficient + clean code
@@ -122,39 +109,52 @@ router.post(
       }))
     }
 
-    Topic.find(query)
-      .populate('supervisor')
-      .exec(async (err, docs) => {
-        if (err) {
-          return res.status(500).json('could not retrieve topics at this time')
+    Topic.find(query).exec(async (err, docs) => {
+      if (err) {
+        return res.status(500).json('could not retrieve topics at this time')
+      }
+
+      if (docs) {
+        for (let i = 0; i < docs.length; i++) {
+          if (docs[i].ownerType === 'supervisor') {
+            docs[i] = await Topic.populate(docs[i], {
+              path: 'supervisor',
+              model: 'Supervisor'
+            })
+          } else {
+            docs[i] = await Topic.populate(docs[i], {
+              path: 'supervisor',
+              model: 'Coordinator'
+            })
+          }
         }
+        let topicIds = docs.map(d => d._id)
 
-        if (docs) {
-          let topicIds = docs.map(d => d._id)
+        let proposalInfo = await Proposal.aggregate([
+          {
+            $match: { topic: { $in: [...topicIds] } }
+          },
+          {
+            $group: { _id: '$topic', count: { $sum: 1 } }
+          }
+        ])
 
-          let proposalInfo = await Proposal.aggregate([
-            {
-              $match: { topic: { $in: [...topicIds] } }
-            },
-            {
-              $group: { _id: '$topic', count: { $sum: 1 } }
-            }
-          ])
+        let countInfo = {}
 
-          let countInfo = {}
+        proposalInfo.forEach(el => (countInfo[el._id] = { count: el.count }))
 
-          proposalInfo.forEach(el => (countInfo[el._id] = { count: el.count }))
+        let result = docs.map(t => ({
+          ...t._doc,
+          proposalCount: countInfo[t._id]?.count ? countInfo[t._id]?.count : 0
+        }))
 
-          let result = docs.map(t => ({
-            ...t._doc,
-            proposalCount: countInfo[t._id]?.count ? countInfo[t._id]?.count : 0
-          }))
+        docs = result
+      }
 
-          docs = result
-        }
+      console.log(docs)
 
-        return res.json({ topics: docs })
-      })
+      return res.json({ topics: docs })
+    })
   }
 )
 
@@ -204,15 +204,15 @@ router.get(
   }
 )
 
-// GET: Topic by topicCode
+// GET: Topic by topic id
 /**
  * @swagger
- *  /topic/{code}:
+ *  /topic/{id}:
  *   get:
  *     summary: Retrieve a list of topics which the current user owns
  *     parameters:
  *       - in: path
- *         name: code
+ *         name: id
  *         schema:
  *           type: string
  *           example: 123-abdfc-grjkr
@@ -223,28 +223,40 @@ router.get(
   passport.authenticate('oauth-bearer', { session: false }),
   permit(['Student', 'Supervisor', 'Coordinator']),
   (req, res) => {
-    Topic.findOne({ _id: req.params.id })
-      .populate('supervisor', 'displayName')
-      .exec(async (err, doc) => {
-        if (err) {
-          return res.status(500).json('could not retrieve topic at this time')
-        }
+    Topic.findOne({ _id: req.params.id }).exec(async (err, doc) => {
+      if (err) {
+        return res.status(500).json('could not retrieve topic at this time')
+      }
 
-        if (req.authInfo.roles.includes('Student')) {
-          // Check if student has created proposal for this topic or not already
-          let hasProposal = await Proposal.findOne({
-            topic: doc._id,
-            student: req.authInfo.oid
+      if (doc) {
+        if (doc.ownerType === 'supervisor') {
+          doc = await Topic.populate(doc, {
+            path: 'supervisor',
+            model: 'Supervisor'
           })
-            .select('_id')
-            .exec()
-
-          if (hasProposal) {
-            doc._doc.hasProposal = true
-          }
+        } else {
+          doc = await Topic.populate(doc, {
+            path: 'supervisor',
+            model: 'Coordinator'
+          })
         }
-        return res.json({ topic: doc })
-      })
+      }
+
+      if (req.authInfo.roles.includes('Student')) {
+        // Check if student has created proposal for this topic or not already
+        let hasProposal = await Proposal.findOne({
+          topic: doc._id,
+          student: req.authInfo.oid
+        })
+          .select('_id')
+          .exec()
+
+        if (hasProposal) {
+          doc._doc.hasProposal = true
+        }
+      }
+      return res.json({ topic: doc })
+    })
   }
 )
 
@@ -261,7 +273,8 @@ router.post(
       title: req.body.title,
       description: req.body.description,
       tags: req.body.tags,
-      status: 'active'
+      status: 'active',
+      ownerType: req.body.ownerType || 'supervisor'
     }
 
     topicData.supervisor = req.authInfo.oid
