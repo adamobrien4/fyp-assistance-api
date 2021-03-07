@@ -22,7 +22,7 @@ router.get(
   permit('Student'),
   async (req, res) => {
     Proposal.find({ student: req.authInfo.oid })
-      .populate('topic', 'code title')
+      .populate('topic', 'title')
       .exec((err, docs) => {
         if (err) {
           return res
@@ -65,7 +65,7 @@ router.get(
       req.authInfo.roles.includes('Coordinator')
     ) {
       Proposal.findOne({ _id: req.params.proposalId })
-        .populate('topic')
+        .populate('topic', 'supervisor')
         .exec((err, proposal) => {
           if (err) {
             return res.status(500).json('could not retrieve proposal')
@@ -298,7 +298,10 @@ router.post(
         return res.status(500).json('could not update proposal status')
       }
 
-      if (req.body.responseType === 'accepted') {
+      if (
+        proposalDoc.topic.type === 'regular' &&
+        req.body.responseType === 'accepted'
+      ) {
         const topic = await Topic.findOne({ _id: proposalDoc.topic._id }).exec()
 
         if (topic) {
@@ -312,6 +315,8 @@ router.post(
         } else {
           return res.status(500).json('could not retrieve topic')
         }
+      } else {
+        return res.json('update success')
       }
     } else {
       return res.status(400).json('could not find proposal')

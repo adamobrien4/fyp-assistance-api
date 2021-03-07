@@ -14,12 +14,6 @@ const supervisorSchema = new Schema({
     type: String,
     required: true
   },
-  // abbr: The supervisors abbreviation Annette McElligott = AMg
-  abbr: {
-    type: String,
-    unique: true,
-    required: true
-  },
   appRoleAssignmentId: {
     type: String,
     unqiue: true,

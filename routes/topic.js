@@ -4,38 +4,13 @@ const { ObjectId } = require('mongoose').Types
 
 const Topic = require('../models/Topic')
 const Tag = require('../models/Tag')
-const { Proposal, SupervisorProposal } = require('../models/Proposal')
-const Supervisor = require('../models/Supervisor')
-const Coordinator = require('../models/Coordinator')
+const { Proposal } = require('../models/Proposal')
 
 const permit = require('../middleware/authorization')
 const validateResourceMW = require('../middleware/validateResource')
 const isPhase = require('../middleware/phaseCheck')
 
-const {
-  addTopicSchema,
-  searchTopicSchema
-} = require('../schemas/routes/topicsSchema')
-
-router.post('/test', async (req, res) => {
-  let topics = await Topic.find({}).exec()
-
-  for (let i = 0; i < topics.length; i++) {
-    if (topics[i].ownerType === 'supervisor') {
-      topics[i] = await Topic.populate(topics[i], {
-        path: 'supervisor',
-        model: 'Supervisor'
-      })
-    } else {
-      topics[i] = await Topic.populate(topics[i], {
-        path: 'supervisor',
-        model: 'Coordinator'
-      })
-    }
-  }
-
-  res.json(topics)
-})
+const schema = require('../schemas/routes/topicsSchema')
 
 // TODO: Make search more efficient + clean code
 /**
@@ -67,7 +42,7 @@ router.post('/test', async (req, res) => {
 router.post(
   '/search',
   passport.authenticate('oauth-bearer', { session: false }),
-  validateResourceMW(searchTopicSchema),
+  validateResourceMW(schema.search),
   async (req, res) => {
     let query = { status: 'active' }
 
@@ -170,6 +145,7 @@ router.get(
   passport.authenticate('oauth-bearer', { session: false }),
   permit(['Supervisor', 'Coordinator']),
   async (req, res) => {
+    console.log(req.authInfo)
     Topic.find({ supervisor: req.authInfo.oid })
       .select('-supervisor -__v')
       .exec(async (err, docs) => {
@@ -266,15 +242,13 @@ router.post(
   passport.authenticate('oauth-bearer', { session: false }),
   isPhase(2),
   permit(['Supervisor', 'Coordinator']),
-  validateResourceMW(addTopicSchema),
+  validateResourceMW(schema.add),
   async (req, res) => {
-    // TODO: Validate topic data before using it
     let topicData = {
       title: req.body.title,
       description: req.body.description,
       tags: req.body.tags,
-      status: 'active',
-      ownerType: req.body.ownerType || 'supervisor'
+      status: 'active'
     }
 
     topicData.supervisor = req.authInfo.oid
@@ -297,10 +271,12 @@ router.post(
   }
 )
 
+// POST: Edit topic
 router.post(
   '/edit/:id',
   passport.authenticate('oauth-bearer', { session: false }),
   permit(['Supervisor', 'Coordinator']),
+  validateResourceMW(schema.edit),
   (req, res) => {
     // TODO: Sanatise req.body before updating topic
     Topic.findByIdAndUpdate(req.params.id, { $set: req.body }).exec(

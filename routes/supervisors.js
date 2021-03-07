@@ -156,6 +156,9 @@ router.post(
         }
 
         if (doc === null) {
+          let ownerType = req.authInfo.roles.includes('Coordinator')
+            ? 'coordinator'
+            : 'supervisor'
           try {
             new Topic({
               supervisor: req.authInfo.oid,
@@ -165,7 +168,8 @@ router.post(
               tags: [],
               additionalNotes: '',
               targetCourses: [],
-              type: 'studentTopic'
+              type: 'studentTopic',
+              ownerType: ownerType
             }).save()
           } catch (err) {
             return res

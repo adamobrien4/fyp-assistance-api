@@ -1,6 +1,6 @@
 const yup = require('yup')
 
-const addTopicSchema = yup.object({
+const add = yup.object({
   title: yup.string().required('Topic must include a title'),
   description: yup.string().required('Topic must include a description'),
   tags: yup
@@ -16,14 +16,26 @@ const addTopicSchema = yup.object({
     .oneOf(['supervisor', 'coordinator'], 'ownerType is invalid')
 })
 
-const searchTopicSchema = yup.object({
+const search = yup.object({
   tags: yup.array(yup.string()).nullable(),
   // TODO: Add matches for GUID format on supervisor field
   supervisor: yup.string().nullable(),
   topicType: yup.string().oneOf(['all', 'regular', 'studentTopic']).nullable()
 })
 
+const edit = yup.object({
+  title: yup.string(),
+  description: yup.string(),
+  tags: yup.array(yup.string()),
+  additionalNotes: yup.string(),
+  chooseMessage: yup.string(),
+  targetCourses: yup.array(yup.string()),
+  environment: yup.string(),
+  languages: yup.string()
+})
+
 module.exports = {
-  addTopicSchema,
-  searchTopicSchema
+  add,
+  search,
+  edit
 }
