@@ -83,7 +83,7 @@ router.post(
         })
       }
     })
-      .select({ email: 1, displayName: 1, _id: 0 })
+      .select('email displayname')
       .catch(err => {
         console.log(err.message)
         return res.status(500).json('An error occurred. Please try again later')

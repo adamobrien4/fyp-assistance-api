@@ -86,12 +86,6 @@ app.use(function (req, res, next) {
   next()
 })
 
-app.use((req, res, next) => {
-  // TODO: what is this
-  req.phase = 1
-  next()
-})
-
 app.get('/ping', (req, res) => {
   return res.json('server available')
 })
