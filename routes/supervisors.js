@@ -32,6 +32,8 @@ const setupHeader = accessToken => {
  *  /supervisor:
  *    get:
  *      summary: Retrieve a list of all supervisors
+ *      tags:
+ *        - Supervisor
  */
 router.get(
   '/',
@@ -53,6 +55,8 @@ router.get(
  *  /supervisor/me:
  *    get:
  *      summary: Retrieves the requesting supervisors account
+ *      tags:
+ *        - Supervisor
  */
 router.get(
   '/me',
@@ -74,6 +78,8 @@ router.get(
  *  /supervisor/assign:
  *    post:
  *      summary: Assign new supervisors to the system by passed emails
+ *      tags:
+ *        - Supervisor
  */
 router.post(
   '/assign',
@@ -138,8 +144,8 @@ router.post(
  *  /supervisor/me/edit:
  *    post:
  *      summary: Allow a supervisor to edit their account details
- *     tags:
- *      - Supervisor
+ *      tags:
+ *        - Supervisor
  */
 router.post(
   '/me/edit',
@@ -166,8 +172,8 @@ router.post(
  *  /supervisor/me/studentProjectAvailibility:
  *    post:
  *      summary: Make supervisor available to supervise student defined topics or not
- *     tags:
- *      - Supervisor
+ *      tags:
+ *        - Supervisor
  */
 router.post(
   '/me/studentProjectAvailibility',
@@ -244,8 +250,8 @@ router.post(
  *  /supervisor/me/studentProjectAvailibility:
  *    get:
  *      summary: Retrieve whether a supervisor is available to supervise student projects or not
- *     tags:
- *      - Supervisor
+ *      tags:
+ *        - Supervisor
  */
 router.get(
   '/me/studentProjectAvailibility',
@@ -275,8 +281,8 @@ router.get(
  *  /supervisor/delete:
  *    post:
  *      summary: Removes a supervisor from the system
- *     tags:
- *      - Supervisor
+ *      tags:
+ *        - Supervisor
  */
 router.post(
   '/delete',
@@ -341,8 +347,8 @@ router.post(
  *  /supervisor/list:
  *    get:
  *      summary: Returns a list of supervisors with only their displayName
- *     tags:
- *      - Supervisor
+ *      tags:
+ *        - Supervisor
  */
 router.get(
   '/list',

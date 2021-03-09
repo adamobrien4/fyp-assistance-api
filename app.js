@@ -15,6 +15,7 @@ const topicRouter = require('./routes/topic')
 const tagRouter = require('./routes/tags')
 const proposalRouter = require('./routes/proposals')
 const phaseRouter = require('./routes/phases')
+const notificationRouter = require('./routes/notifications')
 
 axios.interceptors.request.use(request => {
   // console.log('Starting Request', JSON.stringify(request, null, 2))
@@ -99,5 +100,6 @@ app.use('/topic', topicRouter)
 app.use('/tag', tagRouter)
 app.use('/proposal', proposalRouter)
 app.use('/phase', phaseRouter)
+app.use('/notification', notificationRouter)
 
 module.exports = app

@@ -8,8 +8,8 @@ const treeData = require('../utils/tagsTree')
  *  /tags:
  *    get:
  *      summary: Retrieve the topic tags list
- *     tags:
- *      - Tag
+ *      tags:
+ *        - Tag
  */
 router.get(
   '/',
