@@ -14,7 +14,12 @@ const {
   proposalResponseSchema
 } = require('../schemas/routes/proposalSchema')
 
-// GET: Get all requesting student's proposals
+/**
+ * @swagger
+ *  /proposal/me:
+ *    get:
+ *      summary: Retrieve all proposals for the requesting student
+ */
 router.get(
   '/me',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -35,7 +40,12 @@ router.get(
   }
 )
 
-// GET: A proposal on its ID
+/**
+ * @swagger
+ *  /proposal/{proposalId}:
+ *    get:
+ *      summary: Retrieve a proposal based on its id
+ */
 router.get(
   '/:proposalId',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -81,7 +91,12 @@ router.get(
   }
 )
 
-// POST: Add a new proposal
+/**
+ * @swagger
+ *  /add:
+ *    post:
+ *      summary: Add a new proposal
+ */
 router.post(
   '/add',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -150,7 +165,12 @@ router.post(
   }
 )
 
-// POST: Edit proposal
+/**
+ * @swagger
+ *  /proposal/edit/{id}:
+ *    post:
+ *      summary: Edit an existing proposal based on its id
+ */
 router.post(
   '/edit/:id',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -197,7 +217,12 @@ router.post(
   }
 )
 
-// POST: Upgrade proposal to next status
+/**
+ * @swagger
+ *  /proposal/{id}/upgrade:
+ *    post:
+ *      summary: Upgrade the status of the supplied proposal
+ */
 router.post(
   '/:id/upgrade',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -238,7 +263,12 @@ router.post(
   }
 )
 
-// POST: Upgrade proposal to next status
+/**
+ * @swagger
+ *  /proposal/{id}/downgrade:
+ *    post:
+ *      summary: Downgrade a proposal from submitted to draft status by its id
+ */
 router.post(
   '/:id/downgrade',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -268,7 +298,12 @@ router.post(
   }
 )
 
-// POST: Supervisor respond to proposal
+/**
+ * @swagger
+ *  /proposal/respond/{id}:
+ *    post:
+ *      summary: Allow a supervisor to respond to a proposal sent to a topic which they proposed
+ */
 router.post(
   '/respond/:id',
   passport.authenticate('oauth-bearer', { session: false }),

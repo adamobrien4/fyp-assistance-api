@@ -23,6 +23,12 @@ const setupHeader = accessToken => {
   }
 }
 
+/**
+ * @swagger
+ *  /coordinator:
+ *    get:
+ *      summary: Retrieve all coordinators assigned to the system
+ */
 router.get(
   '/',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -42,6 +48,12 @@ router.get(
   }
 )
 
+/**
+ * @swagger
+ *  /coordinator/remove:
+ *    post:
+ *      summary: Remove a coordinator from the system
+ */
 router.post(
   '/remove',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -107,6 +119,12 @@ router.post(
   }
 )
 
+/**
+ * @swagger
+ *  /coordinator/assign:
+ *    post:
+ *      summary: Assign a new coordinator to the system
+ */
 router.post(
   '/assign',
   passport.authenticate('oauth-bearer', { session: false }),

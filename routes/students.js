@@ -20,7 +20,12 @@ const {
   assignUser
 } = require('../utils/userAssignment/assignUser')
 
-// GET: List of all students
+/**
+ * @swagger
+ *  /student:
+ *    get:
+ *      summary: Retrieve all students from the database
+ */
 router.get(
   '/',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -36,7 +41,12 @@ router.get(
   }
 )
 
-// POST: Assign
+/**
+ * @swagger
+ *  /student/assign:
+ *    post:
+ *      summary: Assign a new student to the system
+ */
 router.post(
   '/assign',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -97,7 +107,12 @@ router.post(
   }
 )
 
-// POST: Delete
+/**
+ * @swagger
+ *  /student/delete:
+ *    post:
+ *      summary: Remove a student from the system
+ */
 router.post(
   '/delete',
   passport.authenticate('oauth-bearer', { session: false }),

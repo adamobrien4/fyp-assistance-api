@@ -8,6 +8,12 @@ const checkPhase = require('../middleware/phaseCheck')
 
 const { editPhaseSchema } = require('../schemas/routes/phaseSchema')
 
+/**
+ * @swagger
+ *  /phases:
+ *    get:
+ *      summary: Retrieve the current phase
+ */
 router.get(
   '/',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -27,6 +33,12 @@ router.get(
   }
 )
 
+/**
+ * @swagger
+ *  /phases/all:
+ *    get:
+ *      summary: Retrieve all phases for the system
+ */
 router.get(
   '/all',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -43,6 +55,12 @@ router.get(
   }
 )
 
+/**
+ * @swagger
+ *  /phases/edit:
+ *    post:
+ *      summary: Edit the current system phases
+ */
 router.post(
   '/edit',
   passport.authenticate('oauth-bearer', { session: false }),

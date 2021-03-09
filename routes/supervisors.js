@@ -27,7 +27,12 @@ const setupHeader = accessToken => {
   }
 }
 
-// GET: List of all supervisors
+/**
+ * @swagger
+ *  /supervisor:
+ *    get:
+ *      summary: Retrieve a list of all supervisors
+ */
 router.get(
   '/',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -43,7 +48,12 @@ router.get(
   }
 )
 
-// GET: Supervisors own account
+/**
+ * @swagger
+ *  /supervisor/me:
+ *    get:
+ *      summary: Retrieves the requesting supervisors account
+ */
 router.get(
   '/me',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -59,7 +69,12 @@ router.get(
   }
 )
 
-// POST: Assign new supervisor
+/**
+ * @swagger
+ *  /supervisor/assign:
+ *    post:
+ *      summary: Assign new supervisors to the system by passed emails
+ */
 router.post(
   '/assign',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -74,6 +89,8 @@ router.post(
     for (let i = 0; i < supervisors.length; i++) {
       supervisors[i].status = 'unknown'
     }
+
+    // TODO: Test this code to ensure that it is working correctly
 
     // Query database to see if any of these supervisors already exist
     let existingEmails = await Supervisor.find({
@@ -116,7 +133,14 @@ router.post(
   }
 )
 
-// POST: Edit the supervisors own account
+/**
+ * @swagger
+ *  /supervisor/me/edit:
+ *    post:
+ *      summary: Allow a supervisor to edit their account details
+ *     tags:
+ *      - Supervisor
+ */
 router.post(
   '/me/edit',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -137,7 +161,14 @@ router.post(
   }
 )
 
-// POST: Toggle the supervisors availibility to supervisor student defined topics
+/**
+ * @swagger
+ *  /supervisor/me/studentProjectAvailibility:
+ *    post:
+ *      summary: Make supervisor available to supervise student defined topics or not
+ *     tags:
+ *      - Supervisor
+ */
 router.post(
   '/me/studentProjectAvailibility',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -208,7 +239,14 @@ router.post(
   }
 )
 
-// GET: Whether the supervisor is available to supervise student defined topics
+/**
+ * @swagger
+ *  /supervisor/me/studentProjectAvailibility:
+ *    get:
+ *      summary: Retrieve whether a supervisor is available to supervise student projects or not
+ *     tags:
+ *      - Supervisor
+ */
 router.get(
   '/me/studentProjectAvailibility',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -232,7 +270,14 @@ router.get(
   }
 )
 
-// DELETE: Delete a supervisor
+/**
+ * @swagger
+ *  /supervisor/delete:
+ *    post:
+ *      summary: Removes a supervisor from the system
+ *     tags:
+ *      - Supervisor
+ */
 router.post(
   '/delete',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -291,7 +336,14 @@ router.post(
   }
 )
 
-// GET: List of supervisors for dropdown / select etc
+/**
+ * @swagger
+ *  /supervisor/list:
+ *    get:
+ *      summary: Returns a list of supervisors with only their displayName
+ *     tags:
+ *      - Supervisor
+ */
 router.get(
   '/list',
   passport.authenticate('oauth-bearer', { session: false }),
