@@ -1,15 +1,20 @@
 const express = require('express')
 const passport = require('passport')
 const axios = require('axios')
+const swaggerJSDoc = require('swagger-jsdoc')
+const swaggerUi = require('swagger-ui-express')
 
 const config = require('./config/config')
 
-console.log(config)
-console.log(process.env.NODE_ENV)
+const mongoSanatize = require('express-mongo-sanitize')
 
 const studentRouter = require('./routes/students')
 const supervisorRouter = require('./routes/supervisors')
 const coordinatorRouter = require('./routes/coordinators')
+const topicRouter = require('./routes/topic')
+const tagRouter = require('./routes/tags')
+const proposalRouter = require('./routes/proposals')
+const phaseRouter = require('./routes/phases')
 
 axios.interceptors.request.use(request => {
   // console.log('Starting Request', JSON.stringify(request, null, 2))
@@ -23,8 +28,8 @@ const options = {
   issuer: `https://${config.azure.metadata.issuer}/${config.azure.tenantID}/`,
   clientID: config.azure.clientID,
   audience: config.azure.audience,
-  validateIssuer: config.azure.settings.validateIssuer,
-  passReqToCallback: config.azure.settings.passReqToCallback,
+  validateIssuer: !!config.azure.settings.validateIssuer,
+  passReqToCallback: !!config.azure.settings.passReqToCallback,
   loggingNoPII: false
 }
 
@@ -32,8 +37,42 @@ let bearerStrategy = new BearerStrategy(options, function (token, done) {
   done(null, {}, token)
 })
 
+// Swagger Setup
+const swaggerDefinition = {
+  openapi: '3.0.0',
+  info: {
+    title: 'FYP Assistance System API',
+    version: '1.0.0',
+    description:
+      'This is a REST API application made with Express. It serves as a data server for the FYP Assistance System React FrontEnd.',
+    license: {
+      name: 'Licensed Under MIT',
+      url: 'https://spdx.org/licenses/MIT.html'
+    },
+    contact: {
+      name: 'FYPAssistanceSystem',
+      url: 'https://jsonplaceholder.typicode.com'
+    }
+  },
+  servers: [
+    {
+      url: 'http://localhost:5000',
+      description: 'Development server'
+    }
+  ]
+}
+
+const swaggerOptions = {
+  swaggerDefinition,
+  // PAths to files containing OpenAPI definitions
+  apis: ['./routes/*.js']
+}
+
+const swaggerSpec = swaggerJSDoc(swaggerOptions)
+
 let app = express()
 app.use(express.json())
+app.use(mongoSanatize({ replaceWith: '_' }))
 app.use(passport.initialize())
 passport.use(bearerStrategy)
 
@@ -47,33 +86,18 @@ app.use(function (req, res, next) {
   next()
 })
 
+app.get('/ping', (req, res) => {
+  return res.json('server available')
+})
+
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec))
+
 app.use('/student', studentRouter)
 app.use('/supervisor', supervisorRouter)
 app.use('/coordinator', coordinatorRouter)
-
-app.get('/', (req, res) => {
-  res.json('Home')
-})
-
-app.get(
-  '/protected',
-  passport.authenticate('oauth-bearer', { session: false }),
-  (req, res) => {
-    console.log(req.authInfo)
-    var claims = req.authInfo.scp.split(' ')
-    var roles = req.authInfo.roles
-    console.log(claims)
-    console.log(roles)
-
-    if (claims.includes('Suggestions.Read.All')) {
-      res.json({ protectedData: 12332 })
-    } else {
-      res.json({ 'auth-error': 'not authenticated to view this resource' })
-    }
-
-    // console.log('User Info: ', req.user)
-    // console.log('Validated Claims: ', claims)
-  }
-)
+app.use('/topic', topicRouter)
+app.use('/tag', tagRouter)
+app.use('/proposal', proposalRouter)
+app.use('/phase', phaseRouter)
 
 module.exports = app

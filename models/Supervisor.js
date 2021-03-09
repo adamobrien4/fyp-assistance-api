@@ -2,6 +2,7 @@ const mongoose = require('mongoose')
 const { Schema } = mongoose
 
 const supervisorSchema = new Schema({
+  _id: String,
   email: {
     type: String,
     unique: true,
@@ -13,11 +14,6 @@ const supervisorSchema = new Schema({
     type: String,
     required: true
   },
-  azureId: {
-    type: String,
-    unique: true,
-    required: true
-  },
   appRoleAssignmentId: {
     type: String,
     unqiue: true,
@@ -25,4 +21,4 @@ const supervisorSchema = new Schema({
   }
 })
 
-module.exports = mongoose.model('supervisor', supervisorSchema)
+module.exports = mongoose.model('Supervisor', supervisorSchema)

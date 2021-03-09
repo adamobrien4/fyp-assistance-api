@@ -14,6 +14,7 @@ module.exports = {
     'comma-dangle': ['error', 'never'],
     'no-unused-vars': ['warn'],
     'no-var': ['off'],
-    'one-var': ['off']
+    'one-var': ['off'],
+    'space-before-function-paren': ['off']
   }
 }

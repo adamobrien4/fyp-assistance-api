@@ -2,6 +2,7 @@ const mongoose = require('mongoose')
 const { Schema } = mongoose
 
 const studentSchema = new Schema({
+  _id: String,
   studentId: {
     type: String,
     unqiue: true,
@@ -18,11 +19,6 @@ const studentSchema = new Schema({
     type: String,
     required: true
   },
-  azureId: {
-    type: String,
-    unique: true,
-    required: true
-  },
   appRoleAssignmentId: {
     type: String,
     unqiue: true,
@@ -30,4 +26,4 @@ const studentSchema = new Schema({
   }
 })
 
-module.exports = mongoose.model('student', studentSchema)
+module.exports = mongoose.model('Student', studentSchema)
