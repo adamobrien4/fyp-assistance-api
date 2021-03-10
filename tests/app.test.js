@@ -14,6 +14,7 @@ const Coordinator = require('../models/Coordinator')
 const Topic = require('../models/Topic')
 const { Proposal } = require('../models/Proposal')
 const Phase = require('../models/Phase')
+const Notification = require('../models/Notification')
 
 // Setup test environment with 'test' database
 setupDB('test')
@@ -94,8 +95,6 @@ describe('Endpoint Testing: /student', () => {
         }
       ]
       await Student.insertMany(testStudents)
-
-      // TODO: Ask juston how to do this
 
       // Mock axios functions
       axios.post.mockImplementation(url => {

@@ -1,21 +1,65 @@
 const Notification = require('../models/Notification')
 
-const add = (userId, title, path) => {
+const add = data => {
   return new Promise((resolve, reject) => {
     new Notification({
-      user: userId,
-      title,
-      path
+      user: data.user,
+      title: data.title,
+      path: data.path
     }).save((err, notification) => {
       if (err) {
+        // console.error(err)
         return reject(err)
       }
 
-      return resolve()
+      return resolve(notification)
+    })
+  })
+}
+
+const find = query => {
+  return new Promise((resolve, reject) => {
+    Notification.find(query).exec((err, notifications) => {
+      if (err) {
+        console.error(err)
+        return reject(err)
+      }
+
+      return resolve(notifications)
+    })
+  })
+}
+
+const findUnread = query => {
+  return new Promise((resolve, reject) => {
+    Notification.find({ ...query, read: false }).exec((err, notifications) => {
+      if (err) {
+        console.error(err)
+        return reject(err)
+      }
+
+      return resolve(notifications)
+    })
+  })
+}
+
+const findOne = query => {
+  return new Promise((resolve, reject) => {
+    console.log('Querying:', query)
+    Notification.findOne(query).exec((err, notification) => {
+      if (err) {
+        console.error(err)
+        return reject(err)
+      }
+
+      return resolve(notification)
     })
   })
 }
 
 module.exports = {
-  add
+  add,
+  find,
+  findUnread,
+  findOne
 }

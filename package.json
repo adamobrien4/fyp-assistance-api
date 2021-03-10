@@ -46,7 +46,8 @@
   "jest": {
     "testEnvironment": "node",
     "coveragePathIgnorePatterns": [
-      "/node_modules/"
+      "/node_modules/",
+      "/testConfig/*"
     ]
   },
   "prettier": "prettier-config-standard"

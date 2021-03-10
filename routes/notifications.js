@@ -13,10 +13,11 @@ const Notification = require('../models/Notification')
  */
 router.get(
   '/',
-  // passport.authenticate('oauth-bearer', { session: false }),
+  passport.authenticate('oauth-bearer', { session: false }),
   (req, res) => {
+    console.log(req.authInfo.oid)
     Notification.find({
-      user: req?.authInfo?.oid || '84cae2f1-651b-43d1-8056-470f590b1d9b',
+      user: req.authInfo.oid,
       read: false
     })
       .sort('created_at')
