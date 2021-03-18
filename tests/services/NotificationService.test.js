@@ -4,12 +4,18 @@ const MUUID = require('uuid-mongodb')
 const Notification = require('../../models/Notification')
 const NotificationService = require('../../services/NotificationService')
 
-const { setupDB } = require('../../testConfig/testSetup')
-setupDB('test')
+const { removeAllCollections } = require('../../testConfig/helperFunctions')
+
+// const { setupDB } = require('../../testConfig/testSetup')
+// setupDB('test')
 
 describe('Notification Service', () => {
+  afterEach(async () => {
+    await removeAllCollections()
+  })
+
   const user = {
-    oid: MUUID.v1().toString()
+    oid: MUUID.v4().toString()
   }
 
   const notiObjs = [

@@ -7,8 +7,8 @@ const Topic = require('../../models/Topic')
 
 // TODO: Find out how to initialise the test DB before when running individual test files
 // DB setup is ran in the app.test.js file currently
-const { setupDB } = require('../../testConfig/testSetup')
-setupDB('test')
+// const { setupDB } = require('../../testConfig/testSetup')
+// setupDB('test')
 
 describe('Proposal Model test', () => {
   const proposalObject = {
