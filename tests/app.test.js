@@ -1,12 +1,9 @@
 /* eslint-disable no-undef */
-jest.useFakeTimers()
 jest.mock('passport')
 jest.mock('axios')
 require('dotenv').config()
 const app = require('../app')
 const supertest = require('supertest')
-
-// // const { setupDB } = require('../testConfig/testSetup')
 
 const axios = require('axios')
 
@@ -18,9 +15,6 @@ const Phase = require('../models/Phase')
 
 const { removeAllCollections } = require('../testConfig/helperFunctions')
 
-// Setup test environment with 'test' database
-// // setupDB('test')
-
 app.use(function (req, res, next) {
   res.header('Access-Control-Allow-Origin', '*')
   res.header(
@@ -30,12 +24,9 @@ app.use(function (req, res, next) {
   next()
 })
 
-describe.skip('App', async () => {
-  let request
-  beforeAll(async () => {
-    request = await supertest(app)
-  })
+const request = supertest(app)
 
+describe('App', () => {
   afterEach(async () => {
     await removeAllCollections()
   })

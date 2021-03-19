@@ -11,7 +11,7 @@ const {
 const getAll = () => {
   return new Promise((resolve, reject) => {
     Coordinator.find({})
-      .select('displayName email')
+      .select('email displayName')
       .exec((err, docs) => {
         if (err) {
           return reject(new Error('could not retrieve coordinators'))

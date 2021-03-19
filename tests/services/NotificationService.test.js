@@ -6,9 +6,6 @@ const NotificationService = require('../../services/NotificationService')
 
 const { removeAllCollections } = require('../../testConfig/helperFunctions')
 
-// const { setupDB } = require('../../testConfig/testSetup')
-// setupDB('test')
-
 describe('Notification Service', () => {
   afterEach(async () => {
     await removeAllCollections()

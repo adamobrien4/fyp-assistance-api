@@ -7,7 +7,7 @@
     "lint": "prettier --check .",
     "format": "prettier --write .",
     "pretest": "start mongod -dbpath=C:\\data\\db",
-    "test": "set NODE_ENV=test&& jest",
+    "test": "set NODE_ENV=test&& jest --runInBand --forceExit",
     "posttest": "start mongo admin --eval \"use admin && db.shutdownServer()\"",
     "test:watch": "set NODE_ENV=test jest --watch",
     "start": "node server.js",
@@ -45,7 +45,11 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "setupFilesAfterEnv":["./testConfig/testSetup"],
+    "setupFilesAfterEnv": [
+      "./testConfig/testSetup"
+    ],
+    "injectGlobals": true,
+    "timers": "fake",
     "coveragePathIgnorePatterns": [
       "/node_modules/",
       "/testConfig/*"

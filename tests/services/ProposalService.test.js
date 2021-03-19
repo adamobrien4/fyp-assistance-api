@@ -1,8 +1,8 @@
+/* eslint-disable no-undef */
 const MUUID = require('uuid-mongodb')
 const ObjectId = require('mongoose').Types.ObjectId
 
 const Student = require('../../models/Student')
-const Supervisor = require('../../models/Supervisor')
 const { Proposal } = require('../../models/Proposal')
 
 const ProposalService = require('../../services/ProposalService')

@@ -9,9 +9,6 @@ const axios = require('../../__mocks__/axios')
 
 const { removeAllCollections } = require('../../testConfig/helperFunctions')
 
-// const { setupDB } = require('../../testConfig/testSetup')
-// setupDB('test')
-
 describe('Student Service', () => {
   afterEach(async () => {
     await removeAllCollections()
@@ -51,7 +48,6 @@ describe('Student Service', () => {
       await Student.insertMany(studentObjs)
 
       const response = await StudentService.getAll()
-
       const students = response.students
 
       expect(students.length).toBe(3)

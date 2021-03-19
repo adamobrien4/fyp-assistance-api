@@ -66,44 +66,7 @@ const assignUser = async (userType, authorizationHeader, users) => {
         if (userType === 'student') {
           userData.studentId = userData.email.split('@')[0]
         } else if (userType === 'supervisor') {
-          // let abbreviationExist = true
-          // // Loop until an abbreviation has been generated which does not exist
-          // while (abbreviationExist) {
-          //   let dn = userData.displayName
-          //     .toLowerCase()
-          //     .replace(/[^0-9a-z ]/gi, '')
-          //     .split(' ')
-          //   userData.abbr = (
-          //     dn[0].substring(0, 1) + dn[1].substring(0, 3)
-          //   ).toUpperCase()
-          //   // Check if abbr is already assigned
-          //   let supervisorDoc = await Supervisor.findOne({
-          //     abbr: userData.abbr
-          //   }).catch(err => {
-          //     // Unable to query supervisors
-          //     console.error(err)
-          //     return new Error({
-          //       message: 'unable_query_supervisor_abbreviation',
-          //       statusCode: 500
-          //     })
-          //   })
-          //   if (supervisorDoc) {
-          //     // Found a supervisor with this abbreviation
-          //     // TODO: How to handle if the abbreviation is assigned already
-          //     var characters =
-          //       'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-          //     let charLen = characters.length
-          //     let abbr = ''
-          //     for (let i = 0; i < 4; i++) {
-          //       abbr += characters.charAt(Math.floor(Math.random() * charLen))
-          //     }
-          //     userData.abbr = abbr
-          //     abbreviationExist = false
-          //   } else {
-          //     // No supervisors have this abbreviation assigned
-          //     abbreviationExist = false
-          //   }
-          // }
+          // User is Supervisor
         } else if (userType === 'coordinator') {
           // Coordinator
         } else {
@@ -183,9 +146,10 @@ const assignUser = async (userType, authorizationHeader, users) => {
 
       if (userData.status === 'assigned') {
         console.log('User has type of assigned')
-        // TODO: Student or Supervisor
+        // TODO: Student
         if (userType === 'student') {
           console.log('User is student type')
+          console.log(userData)
           const student = new Student({
             _id: MUUID.from(userData.azureId).toString('D'),
             studentId: userData.studentId,
@@ -197,6 +161,7 @@ const assignUser = async (userType, authorizationHeader, users) => {
           })
 
           try {
+            console.log('Saving Student')
             await student.save()
             console.log('Saved')
           } catch (err) {

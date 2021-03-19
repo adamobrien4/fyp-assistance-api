@@ -1,6 +1,5 @@
 /* eslint-disable no-undef */
 const MUUID = require('uuid-mongodb')
-
 const ObjectId = require('mongoose').Types.ObjectId
 
 const Topic = require('../../models/Topic')
@@ -10,9 +9,6 @@ const Tag = require('../../models/Tag')
 const TopicService = require('../../services/TopicService')
 
 const { removeAllCollections } = require('../../testConfig/helperFunctions')
-
-// const { setupDB } = require('../../testConfig/testSetup')
-// setupDB('test')
 
 describe('Topic Service', () => {
   afterEach(async () => {
@@ -187,6 +183,7 @@ describe('Topic Service', () => {
       await Topic.insertMany(topicObjs)
       await Tag.insertMany(tagObjs)
     })
+
     afterEach(async () => {
       await removeAllCollections()
     })
@@ -257,8 +254,6 @@ describe('Topic Service', () => {
 
       const result = await TopicService.search(req)
       const response = result.topics
-
-      console.log(response)
 
       expect(response.length).toBe(1)
 

@@ -57,8 +57,6 @@ describe('Coordinator Service', () => {
       const result = await CoordinatorService.getAll()
       const response = result.coordinators
 
-      console.log({ response })
-
       expect(response.length).toBe(3)
       expect(response[0].email).toBe(coordinatorObjs[0].email)
       expect(response[0].displayName).toBe(coordinatorObjs[0].displayName)
@@ -79,29 +77,18 @@ describe('Coordinator Service', () => {
       }
     }
 
-    // it('should remove a coordinator from the system', async () => {
-    //   axios.delete.mockResolvedValue('resolved')
+    it('should remove a coordinator from the system', async () => {
+      axios.delete.mockResolvedValue('resolved')
 
-    //   await Coordinator.insertMany([coordinatorObjs[0]])
-    //   const existingCoordinators = await Coordinator.find({}).exec()
-    //   expect(existingCoordinators.length).toBe(1)
+      await Coordinator.insertMany([coordinatorObjs[0]])
+      const existingCoordinators = await Coordinator.find({}).exec()
+      expect(existingCoordinators.length).toBe(1)
 
-    //   const response = await CoordinatorService.remove(req)
-    //   const remainingCoordinators = await Coordinator.find({}).exec()
+      const response = await CoordinatorService.remove(req)
+      const remainingCoordinators = await Coordinator.find({}).exec()
 
-    //   expect(response).toBe('coordinator removed')
-    //   expect(remainingCoordinators.length).toBe(0)
-    // }, 30000)
-
-    it('should remove the coordinator if the appRoleAssignment does not exist', async () => {
-      // FIXME: Why is this test not passing, not returning as Reject
-      jest.spyOn(axios, 'delete').mockRejectedValue(Error('err'))
-
-      // const response = await CoordinatorService.remove(req)
-
-      // console.log(response)
-
-      expect(true).toBeTruthy()
+      expect(response).toBe('coordinator removed')
+      expect(remainingCoordinators.length).toBe(0)
     })
   })
 

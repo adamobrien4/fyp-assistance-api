@@ -1,5 +1,4 @@
 /* eslint-disable no-undef */
-
 jest.mock('../../graph/graph')
 jest.mock('../../utils/userAssignment/assignUser')
 
@@ -11,12 +10,9 @@ const Topic = require('../../models/Topic')
 
 const { removeAllCollections } = require('../../testConfig/helperFunctions')
 
-// const { setupDB } = require('../../testConfig/testSetup')
-// setupDB('test')
-
 beforeEach(() => jest.clearAllMocks())
 
-describe.skip('Supervisor Service', () => {
+describe('Supervisor Service', () => {
   afterEach(async () => {
     await removeAllCollections()
   })
