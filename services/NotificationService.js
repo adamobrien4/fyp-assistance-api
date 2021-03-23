@@ -32,14 +32,16 @@ const find = query => {
 
 const findUnread = query => {
   return new Promise((resolve, reject) => {
-    Notification.find({ ...query, read: false }).exec((err, notifications) => {
-      if (err) {
-        console.error(err)
-        return reject(err)
-      }
+    Notification.find({ ...query, read: false })
+      .sort('created_at')
+      .exec((err, notifications) => {
+        if (err) {
+          console.error(err)
+          return reject(err)
+        }
 
-      return resolve(notifications)
-    })
+        return resolve(notifications)
+      })
   })
 }
 

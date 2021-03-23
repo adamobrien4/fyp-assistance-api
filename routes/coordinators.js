@@ -28,6 +28,8 @@ const setupHeader = accessToken => {
  *  /coordinator:
  *    get:
  *      summary: Retrieve all coordinators assigned to the system
+ *      tags:
+ *        - Coordinator
  */
 router.get(
   '/',
@@ -53,6 +55,8 @@ router.get(
  *  /coordinator/remove:
  *    post:
  *      summary: Remove a coordinator from the system
+ *      tags:
+ *        - Coordinator
  */
 router.post(
   '/remove',
@@ -124,6 +128,8 @@ router.post(
  *  /coordinator/assign:
  *    post:
  *      summary: Assign a new coordinator to the system
+ *      tags:
+ *        - Coordinator
  */
 router.post(
   '/assign',

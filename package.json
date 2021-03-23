@@ -27,6 +27,7 @@
     "swagger-jsdoc": "^6.0.6",
     "swagger-ui-express": "^4.1.6",
     "uuid-mongodb": "^2.4.1",
+    "yamljs": "^0.3.0",
     "yup": "^0.32.8"
   },
   "devDependencies": {

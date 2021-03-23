@@ -1,6 +1,8 @@
 const { Proposal, CustomProposal } = require('../models/Proposal')
 const Topic = require('../models/Topic')
 
+const NotificationService = require('./NotificationService')
+
 const getOwned = req => {
   return new Promise((resolve, reject) => {
     Proposal.find({ student: req.authInfo.oid })
@@ -91,10 +93,7 @@ const add = req => {
           chooseMessage: req.body.chooseMessage,
           student: req.authInfo.oid,
           topic: req.body.topic,
-          type:
-            topicDocument.type === 'regular'
-              ? 'supervisorDefined'
-              : 'studentDefined',
+          type: doc.type === 'regular' ? 'supervisorDefined' : 'studentDefined',
           status: req.body.saveAsDraft ? 'draft' : 'submitted'
         }
 
@@ -115,11 +114,17 @@ const add = req => {
           proposal = new Proposal(topicData)
         }
 
-        proposal.save((err, doc) => {
+        proposal.save(async (err, doc) => {
           if (err) {
             console.log(err)
             return resolve.json('could not add proposal')
           }
+
+          await NotificationService.add({
+            user: doc.supervisor,
+            title: 'A student has proposed for one of your topics',
+            path: '/topics/manage'
+          })
 
           return resolve.json('Proposal added')
         })
@@ -233,7 +238,6 @@ const downgrade = () => {
 
 const respond = req => {
   return new Promise((resolve, reject) => {
-    // FIXME: Put into callback .exec
     Proposal.findOne({
       _id: req.params.id,
       status: 'submitted'
@@ -253,40 +257,43 @@ const respond = req => {
           proposalDoc.status = req.body.responseType
           proposalDoc.supervisorMessage = req.body.message
 
-          // TODO: Fix
+          proposalDoc.save(async (err, _) => {
+            if (err) {
+              console.error(err)
+              return reject(new Error('could not update proposal status'))
+            }
 
-          try {
-            proposalDoc.save(() => {
-              return resolve('')
+            // Inform student about proposal feedback
+            await NotificationService.add({
+              user: proposalDoc.student,
+              title: 'Proposal Feedback Recieved!',
+              path: '/proposals'
             })
-          } catch (err) {
-            console.error(err)
-            return reject(new Error('could not update proposal status'))
-          }
 
-          if (
-            proposalDoc.topic.type === 'regular' &&
-            req.body.responseType === 'accepted'
-          ) {
-            const topic = Topic.findOne({ _id: proposalDoc.topic._id }).exec(
-              (err, doc) => {
-                if (err) {
-                  return reject(new Error('could not retrieve topic'))
+            if (
+              proposalDoc.topic.type === 'regular' &&
+              req.body.responseType === 'accepted'
+            ) {
+              const topic = Topic.findOne({ _id: proposalDoc.topic._id }).exec(
+                (err, doc) => {
+                  if (err) {
+                    return reject(new Error('could not retrieve topic'))
+                  }
+                  topic.status = 'assigned'
+                  try {
+                    topic.save(() => {
+                      return resolve('update success')
+                    })
+                  } catch (e) {
+                    console.log(e)
+                    return reject(new Error('could not update topic'))
+                  }
                 }
-                topic.status = 'assigned'
-                try {
-                  topic.save(doc => {
-                    return resolve('update success')
-                  })
-                } catch (e) {
-                  console.log(e)
-                  return reject(new Error('could not update topic'))
-                }
-              }
-            )
-          } else {
-            return resolve('update success')
-          }
+              )
+            } else {
+              return resolve('update success')
+            }
+          })
         } else {
           return reject(new Error('could not find proposal'))
         }

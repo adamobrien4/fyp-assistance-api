@@ -102,19 +102,9 @@ router.get(
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                topics:
- *                  type: array
- *                  items:
- *                    type: object
- *                    properties:
- *                      title:
- *                        type: string
- *                      description:
- *                        type: string
- *                      code:
- *                        type: string
+ *              type: array
+ *              items:
+ *               $ref: '../models/SwaggerDefinitions.yaml#/components/schemas/Topic'
  */
 router.post(
   '/search',
