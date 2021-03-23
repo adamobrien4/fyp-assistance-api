@@ -1,13 +1,11 @@
 const router = require('express').Router()
 const passport = require('passport')
-const axios = require('axios')
 
 const permit = require('../middleware/authorization')
 const isPhase = require('../middleware/phaseCheck')
 const validateResourceMW = require('../middleware/validateResource')
 
-const Supervisor = require('../models/Supervisor')
-const Topic = require('../models/Topic')
+const SupervisorService = require('../services/SupervisorService')
 
 const {
   assignSupervisorSchema,
@@ -16,35 +14,27 @@ const {
   deleteSupervisorSchema
 } = require('../schemas/routes/supervisorSchema')
 
-const getAccessTokenOnBehalfOf = require('../graph/graph')
-const { assignUser } = require('../utils/userAssignment/assignUser')
-
-const setupHeader = accessToken => {
-  return {
-    headers: {
-      Authorization: `Bearer ${accessToken}`
-    }
-  }
-}
-
 /**
  * @swagger
  *  /supervisor:
  *    get:
  *      summary: Retrieve a list of all supervisors
+ *      tags:
+ *        - Supervisor
  */
 router.get(
   '/',
   passport.authenticate('oauth-bearer', { session: false }),
   permit(['Administrator', 'Coordinator']),
   (req, res) => {
-    var query = Supervisor.find().select({ email: 1, _id: 1 })
-    query.exec((err, docs) => {
-      if (err) {
-        return res.status(500).json('could not retrieve supervisors')
-      }
-      res.json({ supervisors: docs })
-    })
+    SupervisorService.getAll()
+      .then(resp => {
+        return res.json(resp)
+      })
+      .catch(err => {
+        console.log(err)
+        return res.status(500).json(err.message)
+      })
   }
 )
 
@@ -53,6 +43,8 @@ router.get(
  *  /supervisor/me:
  *    get:
  *      summary: Retrieves the requesting supervisors account
+ *      tags:
+ *        - Supervisor
  */
 router.get(
   '/me',
@@ -60,12 +52,14 @@ router.get(
   isPhase(null),
   permit('Supervisor'),
   (req, res) => {
-    Supervisor.findOne({ _id: req.authInfo.oid }).exec((err, doc) => {
-      if (err) {
-        return res.status(500).json('could not find supervisor account')
-      }
-      return res.json({ supervisor: doc })
-    })
+    SupervisorService.getProfile(req.authInfo.oid)
+      .then(resp => {
+        return res.json(resp)
+      })
+      .catch(err => {
+        console.log(err)
+        return res.status(500).json(err.message)
+      })
   }
 )
 
@@ -74,6 +68,8 @@ router.get(
  *  /supervisor/assign:
  *    post:
  *      summary: Assign new supervisors to the system by passed emails
+ *      tags:
+ *        - Supervisor
  */
 router.post(
   '/assign',
@@ -82,54 +78,14 @@ router.post(
   permit('Coordinator'),
   validateResourceMW(assignSupervisorSchema),
   async (req, res) => {
-    console.log(req.body.supervisors)
-
-    // Add a status of unknown to all recieved supervisors
-    let supervisors = req.body.supervisors
-    for (let i = 0; i < supervisors.length; i++) {
-      supervisors[i].status = 'unknown'
-    }
-
-    // TODO: Test this code to ensure that it is working correctly
-
-    // Query database to see if any of these supervisors already exist
-    let existingEmails = await Supervisor.find({
-      email: {
-        $in: supervisors.map(supervisor => {
-          return supervisor.email.toLowerCase()
-        })
-      }
-    })
-      .select('email displayname')
-      .catch(err => {
-        console.log(err.message)
-        return res.status(500).json('An error occurred. Please try again later')
+    SupervisorService.assign(req)
+      .then(resp => {
+        return res.json(resp)
       })
-
-    // Set any existing supervisors status to 'exists'
-    for (let supervisor of existingEmails) {
-      var elemIndex = supervisors
-        .map(spvsr => spvsr.email)
-        .indexOf(supervisor.email)
-      if (elemIndex > -1) {
-        supervisors[elemIndex].status = 'exists'
-      }
-    }
-
-    // Try to get access token for microsoft graph
-    let assignResult = await assignUser(
-      'supervisor',
-      req.headers.authorization,
-      supervisors
-    )
-
-    console.log('AssignResult', assignResult)
-
-    if (assignResult instanceof Error) {
-      return res.status(assignResult.status).json(assignResult.message)
-    } else {
-      return res.json({ supervisors: assignResult })
-    }
+      .catch(err => {
+        console.log(err)
+        return res.status(500).json(err.message)
+      })
   }
 )
 
@@ -138,8 +94,8 @@ router.post(
  *  /supervisor/me/edit:
  *    post:
  *      summary: Allow a supervisor to edit their account details
- *     tags:
- *      - Supervisor
+ *      tags:
+ *        - Supervisor
  */
 router.post(
   '/me/edit',
@@ -148,16 +104,14 @@ router.post(
   permit('Supervisor'),
   validateResourceMW(editSupervisorSchema),
   (req, res) => {
-    Supervisor.updateOne({ _id: req.authInfo.oid }, { $set: req.body }).exec(
-      err => {
-        if (err) {
-          console.log(err)
-          return res.status(500).json('could not updated supervisor account')
-        }
-
-        return res.json('update successful')
-      }
-    )
+    SupervisorService.edit(req)
+      .then(resp => {
+        return res.json(resp)
+      })
+      .catch(err => {
+        console.log(err)
+        return res.status(500).json(err.message)
+      })
   }
 )
 
@@ -166,8 +120,8 @@ router.post(
  *  /supervisor/me/studentProjectAvailibility:
  *    post:
  *      summary: Make supervisor available to supervise student defined topics or not
- *     tags:
- *      - Supervisor
+ *      tags:
+ *        - Supervisor
  */
 router.post(
   '/me/studentProjectAvailibility',
@@ -176,66 +130,17 @@ router.post(
   permit(['Supervisor', 'Coordinator']),
   validateResourceMW(studentProjectAvailibilitySchema),
   async (req, res) => {
-    if (req.body.active) {
-      // Check if custom studen topic exists
-      Topic.findOne({
-        supervisor: req.authInfo.oid,
-        type: 'studentTopic'
-      }).exec((err, doc) => {
-        if (err) {
-          return res.status(500).json('could not retrieve topic')
-        }
-
-        if (doc === null) {
-          let ownerType = req.authInfo.roles.includes('Coordinator')
-            ? 'coordinator'
-            : 'supervisor'
-          try {
-            new Topic({
-              supervisor: req.authInfo.oid,
-              status: 'active',
-              title: 'Student Proposal Topic',
-              description: '<UNSET>',
-              tags: [],
-              additionalNotes: '',
-              targetCourses: [],
-              type: 'studentTopic',
-              ownerType: ownerType
-            }).save()
-          } catch (err) {
-            return res
-              .status(500)
-              .json('could not create student project topic')
-          }
-
-          return res.json('topic created')
-        } else {
-          Topic.updateOne(
-            { supervisor: req.authInfo.oid, type: 'studentTopic' },
-            { status: 'active' }
-          ).exec((err, doc) => {
-            if (err) {
-              console.errror(err)
-              return res.status(500).json('could not update topic')
-            }
-
-            return res.json('update successful')
-          })
-        }
+    SupervisorService.updateCustomTopicAvailibility(
+      req.body.active,
+      req.authInfo
+    )
+      .then(resp => {
+        return res.json(resp)
       })
-    } else {
-      Topic.updateOne(
-        { supervisor: req.authInfo.oid, type: 'studentTopic' },
-        { status: 'archived' }
-      ).exec((err, doc) => {
-        if (err) {
-          console.errror(err)
-          return res.status(500).json('could not update topic')
-        }
-
-        return res.json('update successful')
+      .catch(err => {
+        console.log(err)
+        return res.status(500).json(err.message)
       })
-    }
   }
 )
 
@@ -244,8 +149,8 @@ router.post(
  *  /supervisor/me/studentProjectAvailibility:
  *    get:
  *      summary: Retrieve whether a supervisor is available to supervise student projects or not
- *     tags:
- *      - Supervisor
+ *      tags:
+ *        - Supervisor
  */
 router.get(
   '/me/studentProjectAvailibility',
@@ -253,20 +158,14 @@ router.get(
   isPhase(null),
   permit('Supervisor'),
   async (req, res) => {
-    Topic.findOne({
-      supervisor: req.authInfo.oid,
-      type: 'studentTopic'
-    }).exec((err, doc) => {
-      if (err) {
-        return res.status(500).json('could not retrieve topic')
-      }
-
-      if (doc) {
-        return res.json({ topic: doc })
-      } else {
-        return res.json({ topic: null })
-      }
-    })
+    SupervisorService.getCustomTopicAvailibility(req.authInfo.oid)
+      .then(topic => {
+        return res.json(topic)
+      })
+      .catch(err => {
+        console.log(err)
+        return res.status(500).json(err.message)
+      })
   }
 )
 
@@ -275,8 +174,8 @@ router.get(
  *  /supervisor/delete:
  *    post:
  *      summary: Removes a supervisor from the system
- *     tags:
- *      - Supervisor
+ *      tags:
+ *        - Supervisor
  */
 router.post(
   '/delete',
@@ -285,54 +184,14 @@ router.post(
   permit('Coordinator'),
   validateResourceMW(deleteSupervisorSchema),
   (req, res) => {
-    // TODO: Validate supervisor id
-    let supervisorId = req.body.supervisorId
-
-    Supervisor.findById(supervisorId).exec(async (err, supervisorDoc) => {
-      if (err) {
-        return res
-          .status(500)
-          .json('could not retrieve supervisor at this time')
-      }
-
-      if (supervisorDoc) {
-        // Try to get access token for microsoft graph
-        const accessToken = await getAccessTokenOnBehalfOf(
-          req.headers.authorization.substring(7),
-          'https://graph.microsoft.com/user.read+offline_access+AppRoleAssignment.ReadWrite.All+Directory.AccessAsUser.All+Directory.ReadWrite.All+Directory.Read.All'
-        ).catch(err => {
-          console.error(err)
-          return res.status(500).json('error_access_token')
-        })
-
-        if (accessToken) {
-          axios
-            .delete(
-              `https://graph.microsoft.com/v1.0/users/${supervisorId}/appRoleAssignments/${supervisorDoc.appRoleAssignmentId}`,
-              setupHeader(accessToken)
-            )
-            .then(() => {
-              Supervisor.findByIdAndRemove(supervisorId, (err, doc) => {
-                if (err) {
-                  return res
-                    .status(500)
-                    .json('could not remove supervisor from database')
-                }
-
-                // TODO: Remove/Archive all linked topics/proposals etc
-
-                return res.json('supervisor removed')
-              })
-            })
-            .catch(err => {
-              console.log(err.response.data)
-              res.status(500).json('an_error_occurred')
-            })
-        } else {
-          return res.status(500).json('error_no_access_token')
-        }
-      }
-    })
+    SupervisorService.remove(req)
+      .then(list => {
+        return res.json(list)
+      })
+      .catch(err => {
+        console.log(err)
+        return res.status(500).json(err.message)
+      })
   }
 )
 
@@ -341,24 +200,21 @@ router.post(
  *  /supervisor/list:
  *    get:
  *      summary: Returns a list of supervisors with only their displayName
- *     tags:
- *      - Supervisor
+ *      tags:
+ *        - Supervisor
  */
 router.get(
   '/list',
   passport.authenticate('oauth-bearer', { session: false }),
   isPhase(null),
   (req, res) => {
-    Supervisor.find()
-      .select('displayName')
-      .exec((err, docs) => {
-        if (err) {
-          return res
-            .status(500)
-            .json('could not retrieve list of available supervisors')
-        }
-
-        return res.json({ supervisors: docs })
+    SupervisorService.list()
+      .then(list => {
+        return res.json(list)
+      })
+      .catch(err => {
+        console.log(err)
+        return res.status(500).json(err.message)
       })
   }
 )
