@@ -118,16 +118,17 @@ const findMatchingTopics = (resolve, reject, query) => {
       }
       let topicIds = docs.map(d => d._id)
 
-      const propAgg = Proposal.aggregate([
+      Proposal.aggregate([
         {
           $match: { topic: { $in: [...topicIds] } }
         },
         {
           $group: { _id: '$topic', count: { $sum: 1 } }
         }
-      ]).exec()
-
-      propAgg.then(proposalInfo => {
+      ]).exec((err, proposalInfo) => {
+        if (err) {
+          return reject(new Error(err.message))
+        }
         let countInfo = {}
 
         proposalInfo.forEach(el => (countInfo[el._id] = { count: el.count }))
@@ -137,13 +138,11 @@ const findMatchingTopics = (resolve, reject, query) => {
           proposalCount: countInfo[t._id]?.count ? countInfo[t._id]?.count : 0
         }))
 
-        docs = result
-
-        return resolve({ topics: docs })
+        return resolve({ topics: result })
       })
+    } else {
+      return resolve({ topics: [] })
     }
-
-    return resolve({ topics: docs })
   })
 }
 
@@ -204,6 +203,11 @@ const add = req =>
 
     topicData.supervisor = req.authInfo.oid
 
+    // Get type of user
+    if (req.authInfo.roles.includes('Coordinator')) {
+      topicData.ownerType = 'coordinator'
+    }
+
     if (req.body?.additionalNotes) {
       topicData.additionalNotes = req.body.additionalNotes
     }
@@ -223,7 +227,6 @@ const add = req =>
 
 const edit = req =>
   new Promise((resolve, reject) => {
-    // TODO: Sanatise req.body before updating topic
     Topic.findByIdAndUpdate(req.params.id, { $set: req.body }).exec(
       (err, doc) => {
         if (err) {

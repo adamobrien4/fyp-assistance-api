@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 jest.mock('../../../graph/graph')
 jest.mock('axios')
 
@@ -11,7 +12,7 @@ const config = require('../../../config/config')
 
 const Student = require('../../../models/Student')
 
-describe.only('Assign User', () => {
+describe('Assign User', () => {
   afterEach(async () => {
     await removeAllCollections()
   })

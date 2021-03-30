@@ -12,9 +12,6 @@ const ProposalService = require('../../services/ProposalService')
 
 const { removeAllCollections } = require('../../testConfig/helperFunctions')
 
-// const { setupDB } = require('../../testConfig/testSetup')
-// setupDB('test')
-
 describe('Proposal Service', () => {
   afterEach(async () => {
     await removeAllCollections()
@@ -99,53 +96,7 @@ describe('Proposal Service', () => {
     }
   ]
 
-  describe('getOwned', () => {
-    const req = {
-      authInfo: {
-        oid: student._id
-      }
-    }
-
-    it('should return all owned proposal for the requesting student', async () => {
-      await Student.insertMany([student])
-      await Proposal.insertMany(spvrProposals)
-
-      // TODO: Finish this test
-      const response = await ProposalService.getOwned(req)
-    })
-  })
-
-  describe('get', () => {
-    it('should get a proposal by its id', async () => {})
-  })
-
-  describe('add', () => {
-    describe('supervisor defined', () => {
-      it('should allow a student to create a new proposal', async () => {})
-    })
-
-    describe('student defined', () => {
-      it('should allow a student to create a new proposal', async () => {})
-    })
-  })
-
-  describe('edit', () => {
-    it('should allow a student to edit their proposal', async () => {})
-  })
-
-  describe('upgrade', () => {
-    it('should allow the student to upgrade their proposal', async () => {})
-
-    it('should not allow the student to upgrade their proposal during specific phases', async () => {})
-  })
-
-  describe('downgrade', () => {
-    it('should allow the student to downgrade their proposal during specific phases', async () => {})
-
-    it('should not allow the student to downgrade their proposal during specific phases', async () => {})
-  })
-
-  describe.only('respond', () => {
+  describe('respond', () => {
     it('should allow a supervisor to respond to the proposal', async () => {
       await Supervisor.insertMany([supervisorObjs[0]])
       await Student.insertMany([student])
@@ -174,7 +125,5 @@ describe('Proposal Service', () => {
       expect(notis.length).toBe(1)
       expect(notis[0].user).toBe(student._id)
     })
-
-    it('should allow a coordinator to respond to the proposal', async () => {})
   })
 })

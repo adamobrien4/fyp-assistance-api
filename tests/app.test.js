@@ -153,13 +153,7 @@ describe('App', () => {
       const res = await request.get('/coordinator')
 
       expect(res.statusCode).toBe(200)
-      expect(res.body).toStrictEqual({ message: 'no coordinators found' })
-    })
-
-    it('GET: should return a no coordinators found errror', async () => {
-      const res = await request.get('/coordinator')
-
-      expect(res.body.message).toBe('no coordinators found')
+      expect(res.body).toStrictEqual({ coordinators: [] })
     })
   })
 
@@ -400,7 +394,7 @@ describe('App', () => {
 
         const res = await request.post('/phase/edit').send({ phases: edits })
 
-        expect(res.status).toBe(400)
+        expect(res.status).toBe(500)
         expect(res.body).toBe(
           "Phase 1's start date must be before Phase 2's start date"
         )

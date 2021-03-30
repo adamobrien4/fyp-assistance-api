@@ -28,15 +28,15 @@ const get = req => {
         student: req.authInfo.oid
       }).exec((err, proposal) => {
         if (err) {
-          return resolve.status(500).json('could not retrieve proposal')
+          return reject(new Error('could not retrieve proposal'))
         }
 
         if (proposal) {
           console.log('Student viewing their own proposal')
-          return resolve.json({ proposal: proposal })
+          return resolve({ proposal: proposal })
         }
 
-        return resolve.status(403).json('Unauthorised')
+        return reject(new Error('Unauthorised'))
       })
     } else if (
       req.authInfo.roles.includes('Supervisor') ||
@@ -46,13 +46,13 @@ const get = req => {
         .populate('topic', 'supervisor')
         .exec((err, proposal) => {
           if (err) {
-            return resolve.status(500).json('could not retrieve proposal')
+            return reject(new Error('could not retrieve proposal'))
           }
 
           if (proposal?.topic?.supervisor === req.authInfo.oid) {
-            return resolve.json({ proposal: proposal })
+            return resolve({ proposal: proposal })
           } else {
-            return resolve.status(403).json('Unauthorised')
+            return reject(new Error('Unauthorised'))
           }
         })
     }
@@ -72,7 +72,7 @@ const add = req => {
 
       if (doc) {
         // Student already has a proposal sent for this topic
-        return resolve.status(400).json('existing_topic_proposal')
+        return reject(new Error('existing_topic_proposal'))
       }
 
       Topic.findOne({ _id: req.body.topic }).exec((err, doc) => {
@@ -114,19 +114,21 @@ const add = req => {
           proposal = new Proposal(topicData)
         }
 
-        proposal.save(async (err, doc) => {
+        proposal.save(async (err, _) => {
           if (err) {
             console.log(err)
-            return resolve.json('could not add proposal')
+            return reject(new Error('could not add proposal'))
           }
+
+          console.log(doc)
 
           await NotificationService.add({
             user: doc.supervisor,
-            title: 'A student has proposed for one of your topics',
+            title: 'New student topic proposal recieved',
             path: '/topics/manage'
           })
 
-          return resolve.json('Proposal added')
+          return resolve('Proposal added')
         })
       })
     })
@@ -135,7 +137,7 @@ const add = req => {
 
 const edit = req => {
   return new Promise((resolve, reject) => {
-    console.log(req.body)
+    let docStatus = ''
 
     // Check that the requesting user owns the proposal they are trying to edit
     Proposal.findOne({
@@ -144,43 +146,53 @@ const edit = req => {
       $or: [{ status: 'draft' }, { status: 'pending_edits' }]
     }).exec((err, doc) => {
       if (err) {
-        return resolve
-          .status(500)
-          .json('could not retrieve proposal at this time')
+        return reject(new Error('could not retrieve proposal at this time'))
       }
 
       if (!doc) {
-        return resolve.status(404).json('invalid proposal id')
+        return reject(new Error('invalid proposal id'))
       }
 
       if (doc) {
+        docStatus = doc.status
         Proposal.updateOne(
           {
             _id: req.params.id,
             student: req.authInfo.oid
           },
           { $set: req.body }
-        ).exec((err, doc) => {
+        ).exec(async (err, _) => {
           if (err) {
-            return resolve.status(500).json('could not update proposal')
+            return reject(new Error('could not update proposal'))
           }
 
-          return res.json('proposal updated')
+          console.log(docStatus)
+
+          if (docStatus === 'pending_edits') {
+            console.log('adding notification')
+            // Create new notification for supervisor
+            let topic = await Topic.findOne({ _id: doc.topic }).exec()
+            await NotificationService.add({
+              user: topic.supervisor,
+              title: 'Student updated their proposal',
+              path: '/topics/manage'
+            })
+          }
+
+          return resolve('proposal updated')
         })
       } else {
-        return res
-          .status(500)
-          .json('your requested proposal could not be found')
+        return reject(new Error('your requested proposal could not be found'))
       }
     })
   })
 }
 
-const upgrade = () => {
+const upgrade = req => {
   return new Promise((resolve, reject) => {
     Proposal.findOne({ _id: req.params.id }).exec((err, doc) => {
       if (err) {
-        return res.status(500).json('could not retrieve proposal')
+        return reject(new Error('could not retrieve proposal'))
       }
 
       if (doc) {
@@ -194,30 +206,28 @@ const upgrade = () => {
             // TODO: Create notification for supervisor
             break
           default:
-            return res
-              .status(400)
-              .json('cannot take next step for this proposal')
+            return reject(new Error('cannot take next step for this proposal'))
         }
 
         try {
           doc.save()
         } catch (err) {
-          return res.status(500).json('could not update proposal')
+          return reject(new Error('could not update proposal'))
         }
-        return res.json('proposal updated')
+        return resolve('proposal updated')
       }
 
-      return res.status(404).json('could not find proposal')
+      return reject(new Error('could not find proposal'))
     })
   })
 }
 
-const downgrade = () => {
+const downgrade = req => {
   return new Promise((resolve, reject) => {
     Proposal.findOne({ _id: req.params.id, status: 'submitted' }).exec(
       (err, doc) => {
         if (err) {
-          return res.status(500).json('could not retrieve proposal')
+          return reject(new Error('could not retrieve proposal'))
         }
 
         if (doc) {
@@ -225,12 +235,12 @@ const downgrade = () => {
           try {
             doc.save()
           } catch (err) {
-            return res.status(500).json('could not update proposal')
+            return reject(new Error('could not update proposal'))
           }
-          return res.json('proposal updated')
+          return resolve('proposal updated')
         }
 
-        return res.status(404).json('could not find proposal')
+        return reject(new Error('could not find proposal'))
       }
     )
   })
@@ -274,8 +284,8 @@ const respond = req => {
               proposalDoc.topic.type === 'regular' &&
               req.body.responseType === 'accepted'
             ) {
-              const topic = Topic.findOne({ _id: proposalDoc.topic._id }).exec(
-                (err, doc) => {
+              Topic.findOne({ _id: proposalDoc.topic._id }).exec(
+                (err, topic) => {
                   if (err) {
                     return reject(new Error('could not retrieve topic'))
                   }

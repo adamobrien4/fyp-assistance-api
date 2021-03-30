@@ -10,22 +10,14 @@ const isPhase = require('../middleware/phaseCheck')
 const schema = require('../schemas/routes/topicsSchema')
 
 // GET: Users owned Topics
-/**
- * @swagger
- *  /topic/me:
- *   get:
- *     summary: Retrieve a list of topics which the current user owns
- *     tags:
- *      - Topic
- */
 router.get(
   '/me',
   passport.authenticate('oauth-bearer', { session: false }),
   permit(['Supervisor', 'Coordinator']),
   async (req, res) => {
-    TopicService.getOwned()
-      .then(res => {
-        return res.json(res)
+    TopicService.getOwned(req.authInfo.oid)
+      .then(resp => {
+        return res.json(resp)
       })
       .catch(err => {
         return res.status(500).json(err.message)
@@ -34,29 +26,14 @@ router.get(
 )
 
 // GET: Topic by topic id
-/**
- * @swagger
- *  /topic/{id}:
- *   get:
- *     summary: Retrieve a list of topics which the current user owns
- *     tags:
- *       - Topic
- *     parameters:
- *       - in: path
- *         name: id
- *         schema:
- *           type: string
- *           example: 123-abdfc-grjkr
- *         required: true
- */
 router.get(
   '/:id',
   passport.authenticate('oauth-bearer', { session: false }),
   permit(['Student', 'Supervisor', 'Coordinator']),
   (req, res) => {
     TopicService.get(req.params.id, req.authInfo)
-      .then(res => {
-        return res.json(res)
+      .then(resp => {
+        return res.json(resp)
       })
       .catch(err => {
         return res.status(500).json(err.message)
@@ -64,14 +41,7 @@ router.get(
   }
 )
 
-/**
- * @swagger
- *  /topic/proposals/{id}:
- *    get:
- *      summary: Retrieve all proposals for a specific topic of type [submittted, accepted]
- *      tags:
- *       - Topic
- */
+// GET: Proposals related to a topic
 router.get(
   '/proposals/:id',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -79,8 +49,8 @@ router.get(
   isPhase(4),
   (req, res) => {
     TopicService.getTopicProposals(req.params.id)
-      .then(res => {
-        return res.json(res)
+      .then(resp => {
+        return res.json(resp)
       })
       .catch(err => {
         return res.status(500).json(err.message)
@@ -88,32 +58,15 @@ router.get(
   }
 )
 
-/**
- * @swagger
- *  /topic/search:
- *   post:
- *    summary: Retrieve a list of topics which match some specified search criteria
- *    description: Description of the endpoint
- *    tags:
- *      - Topic
- *    responses:
- *       200:
- *         description: A list of topics
- *         content:
- *           application/json:
- *             schema:
- *              type: array
- *              items:
- *               $ref: '../models/SwaggerDefinitions.yaml#/components/schemas/Topic'
- */
+// POST: Search for topics by criteria
 router.post(
   '/search',
   passport.authenticate('oauth-bearer', { session: false }),
   validateResourceMW(schema.search),
   async (req, res) => {
-    TopicService.search()
-      .then(res => {
-        return res.json(res)
+    TopicService.search(req)
+      .then(resp => {
+        return res.json(resp)
       })
       .catch(err => {
         return res.status(500).json(err.message)
@@ -121,14 +74,7 @@ router.post(
   }
 )
 
-/**
- * @swagger
- *  /topic/add:
- *    post:
- *      summary: Create a new topic for the requesting supervisor
- *      tags:
- *        - Topic
- */
+// POST: Add a new topic
 router.post(
   '/add',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -136,9 +82,9 @@ router.post(
   permit(['Supervisor', 'Coordinator']),
   validateResourceMW(schema.add),
   async (req, res) => {
-    TopicService.add()
-      .then(res => {
-        return res.json(res)
+    TopicService.add(req)
+      .then(resp => {
+        return res.json(resp)
       })
       .catch(err => {
         return res.status(500).json(err.message)
@@ -146,23 +92,16 @@ router.post(
   }
 )
 
-/**
- * @swagger
- *  /topic/edit/{id}:
- *    post:
- *      summary: Update an existing topic with the supplied data
- *      tags:
- *        - Topic
- */
+// POST: Edit an existing topic
 router.post(
   '/edit/:id',
   passport.authenticate('oauth-bearer', { session: false }),
   permit(['Supervisor', 'Coordinator']),
   validateResourceMW(schema.edit),
   (req, res) => {
-    TopicService.edit()
-      .then(res => {
-        return res.json(res)
+    TopicService.edit(req)
+      .then(resp => {
+        return res.json(resp)
       })
       .catch(err => {
         return res.status(500).json(err.message)

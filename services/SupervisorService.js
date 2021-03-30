@@ -1,6 +1,7 @@
 const axios = require('axios')
 
 const Supervisor = require('../models/Supervisor')
+const Coordinator = require('../models/Coordinator')
 const Topic = require('../models/Topic')
 
 const getAccessTokenOnBehalfOf = require('../graph/graph')
@@ -222,16 +223,25 @@ const remove = req =>
 
 const list = () =>
   new Promise((resolve, reject) => {
-    Supervisor.find()
+    Coordinator.find()
       .select('displayName')
-      .exec((err, docs) => {
+      .exec((err, coordinators) => {
         if (err) {
-          return reject(
-            new Error('could not retrieve list of available supervisors')
-          )
+          return reject(new Error('could not find coordinators'))
         }
+        Supervisor.find()
+          .select('displayName')
+          .exec((err, supervisors) => {
+            if (err) {
+              return reject(
+                new Error('could not retrieve list of available supervisors')
+              )
+            }
 
-        return resolve({ supervisors: docs })
+            let list = [...coordinators, ...supervisors]
+
+            return resolve({ supervisors: list })
+          })
       })
   })
 

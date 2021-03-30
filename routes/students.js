@@ -12,12 +12,7 @@ const {
   deleteStudentSchema
 } = require('../schemas/routes/studentSchema')
 
-/**
- * @swagger
- *  /student:
- *    get:
- *      summary: Retrieve all students from the database
- */
+// GET: Retrieve all students from the database
 router.get(
   '/',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -33,12 +28,7 @@ router.get(
   }
 )
 
-/**
- * @swagger
- *  /student/assign:
- *    post:
- *      summary: Assign a new student to the system
- */
+// POST: Assign a new student to the system
 router.post(
   '/assign',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -56,12 +46,7 @@ router.post(
   }
 )
 
-/**
- * @swagger
- *  /student/delete:
- *    post:
- *      summary: Remove a student from the system
- */
+// POST: Remove a student from the system
 router.post(
   '/delete',
   passport.authenticate('oauth-bearer', { session: false }),

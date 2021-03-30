@@ -14,14 +14,7 @@ const {
   deleteSupervisorSchema
 } = require('../schemas/routes/supervisorSchema')
 
-/**
- * @swagger
- *  /supervisor:
- *    get:
- *      summary: Retrieve a list of all supervisors
- *      tags:
- *        - Supervisor
- */
+// GET: List of all supervisors
 router.get(
   '/',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -38,14 +31,7 @@ router.get(
   }
 )
 
-/**
- * @swagger
- *  /supervisor/me:
- *    get:
- *      summary: Retrieves the requesting supervisors account
- *      tags:
- *        - Supervisor
- */
+// GET: Supervisors profile
 router.get(
   '/me',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -63,14 +49,7 @@ router.get(
   }
 )
 
-/**
- * @swagger
- *  /supervisor/assign:
- *    post:
- *      summary: Assign new supervisors to the system by passed emails
- *      tags:
- *        - Supervisor
- */
+// POST: Assign new supervisor
 router.post(
   '/assign',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -89,14 +68,7 @@ router.post(
   }
 )
 
-/**
- * @swagger
- *  /supervisor/me/edit:
- *    post:
- *      summary: Allow a supervisor to edit their account details
- *      tags:
- *        - Supervisor
- */
+// POST: Edit supervisor
 router.post(
   '/me/edit',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -115,14 +87,7 @@ router.post(
   }
 )
 
-/**
- * @swagger
- *  /supervisor/me/studentProjectAvailibility:
- *    post:
- *      summary: Make supervisor available to supervise student defined topics or not
- *      tags:
- *        - Supervisor
- */
+// POST: Toggle custom topic supervision status
 router.post(
   '/me/studentProjectAvailibility',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -144,19 +109,12 @@ router.post(
   }
 )
 
-/**
- * @swagger
- *  /supervisor/me/studentProjectAvailibility:
- *    get:
- *      summary: Retrieve whether a supervisor is available to supervise student projects or not
- *      tags:
- *        - Supervisor
- */
+// GET: Custom topic supervision status
 router.get(
   '/me/studentProjectAvailibility',
   passport.authenticate('oauth-bearer', { session: false }),
   isPhase(null),
-  permit('Supervisor'),
+  permit(['Supervisor', 'Coordinator']),
   async (req, res) => {
     SupervisorService.getCustomTopicAvailibility(req.authInfo.oid)
       .then(topic => {
@@ -169,14 +127,7 @@ router.get(
   }
 )
 
-/**
- * @swagger
- *  /supervisor/delete:
- *    post:
- *      summary: Removes a supervisor from the system
- *      tags:
- *        - Supervisor
- */
+// POST: Remove supervisor from system
 router.post(
   '/delete',
   passport.authenticate('oauth-bearer', { session: false }),
@@ -195,14 +146,7 @@ router.post(
   }
 )
 
-/**
- * @swagger
- *  /supervisor/list:
- *    get:
- *      summary: Returns a list of supervisors with only their displayName
- *      tags:
- *        - Supervisor
- */
+// GET: Supervisor list
 router.get(
   '/list',
   passport.authenticate('oauth-bearer', { session: false }),

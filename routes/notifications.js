@@ -3,14 +3,7 @@ const passport = require('passport')
 
 const NotificationService = require('../services/NotificationService')
 
-/**
- * @swagger
- *  /notifications:
- *    get:
- *      summary: Retrieve all unread notifications for the requesting user
- *      tags:
- *        - Notification
- */
+// GET: Retrieve all unread notifications for the requesting user
 router.get(
   '/',
   passport.authenticate('oauth-bearer', { session: false }),
