@@ -156,7 +156,6 @@ const updateCustomTopicAvailibility = (value, authInfo) =>
 
 const getCustomTopicAvailibility = supervisorId =>
   new Promise((resolve, reject) => {
-    // TODO: Ensure that having status: active is correct here
     Topic.findOne({
       supervisor: supervisorId,
       type: 'studentTopic',

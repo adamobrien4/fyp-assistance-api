@@ -53,7 +53,8 @@
     "timers": "fake",
     "coveragePathIgnorePatterns": [
       "/node_modules/",
-      "/testConfig/*"
+      "/testConfig/*",
+      "/coverage/"
     ]
   },
   "prettier": "prettier-config-standard"

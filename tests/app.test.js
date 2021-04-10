@@ -362,10 +362,12 @@ describe('App', () => {
         expect(res.body).toBe('phases updated')
 
         resultingPhases.forEach((p, index) => {
-          expect(p.start_date.getTime()).toBe(
-            expected[index].start_date.getTime()
+          expect(p.start_date.toISOString()).toBe(
+            expected[index].start_date.toISOString()
           )
-          expect(p.end_date.getTime()).toBe(expected[index].end_date.getTime())
+          expect(p.end_date.toISOString()).toBe(
+            expected[index].end_date.toISOString()
+          )
         })
       })
 

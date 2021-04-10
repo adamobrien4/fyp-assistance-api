@@ -13,7 +13,17 @@ host: 'fypassistance.herokuapp.com'
 basePath: '/'
 tags:
   - name: 'Topic'
-    description: 'Everything about Topics'
+    description: 'Topic related endpoints'
+  - name: 'Student'
+    description: 'Student related endpoints'
+  - name: 'Supervisor'
+    description: 'Supervisor related endpoints'
+  - name: 'Coordinator'
+    description: 'Coordinator related endpoints'
+  - name: 'Tag'
+    description: 'Tag related endpoints'
+  - name: 'Notification'
+    description: 'Notification related endpoints'
 schemes:
   - 'https'
 paths:
@@ -370,6 +380,17 @@ paths:
           description: 'Success'
         '403':
           description: 'User does not have permission to access this resource'
+        '500':
+          description: 'An error occurred while processing the request'
+
+  /notification/read:
+    post:
+      summary: 'Marks a notification as read'
+      tags:
+        - 'Notification'
+      responses:
+        '200':
+          description: 'Notification was marked as read'
         '500':
           description: 'An error occurred while processing the request'
 

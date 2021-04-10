@@ -59,9 +59,25 @@ const findOne = query => {
   })
 }
 
+const markAsRead = notiId => {
+  return new Promise((resolve, reject) => {
+    Notification.updateOne(
+      { read: false, _id: notiId },
+      { read: true, read_at: Date.now() }
+    ).exec((err, _) => {
+      if (err) {
+        return reject(new Error('Could not mark notification as read'))
+      }
+
+      return resolve('Notification Updated')
+    })
+  })
+}
+
 module.exports = {
   add,
   find,
   findUnread,
-  findOne
+  findOne,
+  markAsRead
 }
