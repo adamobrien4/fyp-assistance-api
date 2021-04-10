@@ -1,5 +1,27 @@
 module.exports = [
   {
+    title: 'Game Development',
+    value: 'Game Development',
+    key: 'Game Development',
+    children: [
+      {
+        title: 'Game Artificial Intelligence',
+        value: 'Game Artificial Intelligence',
+        key: 'Game Artificial Intelligence'
+      },
+      {
+        title: 'Game Level Design',
+        value: 'Game Level Design',
+        key: 'Game Level Design'
+      },
+      {
+        title: 'Video Game Engines',
+        value: 'Video Game Engines',
+        key: 'Video Game Engines'
+      }
+    ]
+  },
+  {
     title: 'Research',
     value: 'Research',
     key: 'Research',

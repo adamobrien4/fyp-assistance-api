@@ -1,0 +1,614 @@
+swagger: '2.0'
+info:
+  description: 'This is the API for the Final Year Project Assistance System.'
+  version: '1.0.0'
+  title: 'Final Year Project Assistance System'
+  termsOfService: '-'
+  contact:
+    email: '17226864@studentmail.ul.ie'
+  license:
+    name: 'Apache 2.0'
+    url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
+host: 'fypassistance.herokuapp.com'
+basePath: '/'
+tags:
+  - name: 'Topic'
+    description: 'Topic related endpoints'
+  - name: 'Student'
+    description: 'Student related endpoints'
+  - name: 'Supervisor'
+    description: 'Supervisor related endpoints'
+  - name: 'Coordinator'
+    description: 'Coordinator related endpoints'
+  - name: 'Tag'
+    description: 'Tag related endpoints'
+  - name: 'Notification'
+    description: 'Notification related endpoints'
+schemes:
+  - 'https'
+paths:
+  /topic/me:
+    get:
+      summary: 'Retrieve a list of all topics which the current user owns'
+      tags:
+        - 'Topic'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      responses:
+        '200':
+          description: 'Success'
+          schema:
+            type: 'object'
+            properties:
+              topics:
+                type: 'array'
+                items:
+                  $ref: '#/definitions/Topic'
+        '403':
+          description: 'User does not have permission to access this resource'
+        '500':
+          description: 'An error occurred while processing the request'
+  /topic/{id}:
+    get:
+      summary: 'Retrieve a topic by an id'
+      tags:
+        - 'Topic'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: path
+          name: id
+          type: 'string'
+          required: true
+      responses:
+        '200':
+          description: 'Success'
+          schema:
+            type: 'object'
+            properties:
+              topic:
+                $ref: '#/definitions/Topic'
+        '403':
+          description: 'User does not have permission to access this resource'
+        '500':
+          description: 'An error occurred while processing the request'
+  /topic/proposals/{id}:
+    get:
+      summary: 'Retrieve all proposals [submitted, accepted] linked to a specific topic id'
+      tags:
+        - 'Topic'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: path
+          name: id
+          type: 'string'
+          required: true
+      responses:
+        '200':
+          description: 'Success'
+          schema:
+            type: 'object'
+            properties:
+              proposals:
+                type: 'array'
+                items:
+                  $ref: '#/definitions/Proposal'
+        '403':
+          description: 'User does not have permission to access this resource'
+        '500':
+          description: 'An error occurred while processing the request'
+  /topic/search:
+    post:
+      summary: 'Retrieve a list of topics which match the provided search query'
+      tags:
+        - 'Topic'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      responses:
+        '200':
+          description: 'A list of topics'
+          schema:
+            type: 'object'
+            properties:
+              topics:
+                type: 'array'
+                items:
+                  $ref: '#/definitions/Topic'
+        '403':
+          description: 'User does not have permission to access this resource'
+        '500':
+          description: 'An error occurred while processing the request'
+  /topic/add:
+    post:
+      summary: 'Add a new topic'
+      tags:
+        - 'Topic'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      responses:
+        '200':
+          description: 'Student sucessfully added to the system'
+          schema:
+            type: 'string'
+            example: 'Success'
+        '403':
+          description: 'User does not have permission to access this resource'
+        '500':
+          description: 'An error occurred while processing the request'
+  /topic/edit/{id}:
+    post:
+      summary: 'Edit an existing topic'
+      tags:
+        - 'Topic'
+      consumes:
+        - 'application/json'
+      produces:
+        - 'application/json'
+      parameters:
+        - in: path
+          name: id
+          type: 'string'
+          required: true
+      responses:
+        '200':
+          description: 'Success'
+          schema:
+            type: 'string'
+            example: 'topic updated'
+        '403':
+          description: 'User does not have permission to access this resource'
+        '500':
+          description: 'An error occurred while processing the request'
+
+  /student:
+    get:
+      summary: 'Retrieve all students from the database'
+      tags:
+        - 'Student'
+      responses:
+        '200':
+          description: 'Success'
+          schema:
+            type: 'object'
+            properties:
+              students:
+                type: 'array'
+                items:
+                  $ref: '#/definitions/Student'
+        '403':
+          description: 'The user does not have permission to access this resource'
+        '500':
+          description: 'An error occurred while retrieving the students'
+  /student/assign:
+    post:
+      summary: 'Assign a new student to the system'
+      tags:
+        - 'Student'
+      responses:
+        '200':
+          description: 'Success'
+          schema:
+            type: 'object'
+            properties:
+              students:
+                type: 'array'
+                items:
+                  $ref: '#/definitions/Student'
+        '403':
+          description: 'The user does not have permission to access this resource'
+        '500':
+          description: 'An error occurred while assigning the student(s)'
+  /student/delete:
+    post:
+      summary: 'Remove a student from the system'
+      tags:
+        - 'Student'
+      responses:
+        '200':
+          description: 'Success'
+          schema:
+            $ref: '#/definitions/Student'
+        '403':
+          description: 'The user does not have permission to access this resource'
+        '500':
+          description: 'An error occurred while deleting the student(s)'
+
+  /supervisor:
+    get:
+      summary: 'List of all supervisors'
+      tags:
+        - 'Supervisor'
+      responses:
+        '200':
+          description: 'Success'
+        '403':
+          description: 'User does not have permission to access this resource'
+        '500':
+          description: 'An error occurred while processing the request'
+  /supervisor/list:
+    get:
+      summary: 'List all supervisors'
+      tags:
+        - 'Supervisor'
+      responses:
+        '200':
+          description: 'Success'
+        '403':
+          description: 'User does not have permission to access this resource'
+        '500':
+          description: 'An error occurred while processing the request'
+  /supervisor/me:
+    get:
+      summary: 'Return supervisors profile'
+      tags:
+        - 'Supervisor'
+      responses:
+        '200':
+          description: 'Success'
+        '403':
+          description: 'User does not have permission to access this resource'
+        '500':
+          description: 'An error occurred while processing the request'
+  /supervisor/assign:
+    post:
+      summary: 'Assign a new Supervisor'
+      tags:
+        - Supervisor
+      responses:
+        '200':
+          description: 'Success'
+        '403':
+          description: 'User does not have permission to access this resource'
+        '500':
+          description: 'An error occurred while processing the request'
+  /supervisor/me/edit:
+    post:
+      summary: 'Edit an existing supervisors profile'
+      tags:
+        - 'Supervisor'
+      responses:
+        '200':
+          description: 'Success'
+        '403':
+          description: 'User does not have permission to access this resource'
+        '500':
+          description: 'An error occurred while processing the request'
+  /supervisor/me/studentProjectAvailibility:
+    get:
+      summary: 'Get a supervisors custom student project availibility'
+      tags:
+        - 'Supervisor'
+      responses:
+        '200':
+          description: 'Success'
+        '403':
+          description: 'User does not have permission to access this resource'
+        '500':
+          description: 'An error occurred while processing the request'
+    post:
+      summary: 'Toggle a supervisors custom student project availibility'
+      tags:
+        - 'Supervisor'
+      responses:
+        '200':
+          description: 'Success'
+        '403':
+          description: 'User does not have permission to access this resource'
+        '500':
+          description: 'An error occurred while processing the request'
+  /supervisor/delete:
+    post:
+      summary: 'Delete a Supervisor from the system'
+      tags:
+        - 'Supervisor'
+      responses:
+        '200':
+          description: 'Success'
+        '403':
+          description: 'User does not have permission to access this resource'
+        '500':
+          description: 'An error occurred while processing the request'
+
+  /coordinator:
+    get:
+      summary: 'Get all coordinators from the system'
+      tags:
+        - 'Coordinator'
+      responses:
+        '200':
+          description: 'Success'
+        '403':
+          description: 'User does not have permission to access this resource'
+        '500':
+          description: 'An error occurred while processing the request'
+  /coordinator/remove:
+    post:
+      summary: 'Remove a Coordinator from the system'
+      tags:
+        - 'Coordinator'
+      responses:
+        '200':
+          description: 'Success'
+        '403':
+          description: 'User does not have permission to access this resource'
+        '500':
+          description: 'An error occurred while processing the request'
+  /coordinator/assign:
+    post:
+      summary: 'Assign a new Coordinator to the system'
+      tags:
+        - 'Coordinator'
+      responses:
+        '200':
+          description: 'Success'
+        '403':
+          description: 'User does not have permission to access this resource'
+        '500':
+          description: 'An error occurred while processing the request'
+
+  /tag:
+    get:
+      summary: 'Retrieve all topic tags from database'
+      tags:
+        - 'Tag'
+      responses:
+        '200':
+          description: 'Success'
+        '403':
+          description: 'User does not have permission to access this resource'
+        '500':
+          description: 'An error occurred while processing the request'
+
+  /notification:
+    get:
+      summary: 'Retrieve all unread notifications for the requesting user'
+      tags:
+        - 'Notification'
+      responses:
+        '200':
+          description: 'Success'
+        '403':
+          description: 'User does not have permission to access this resource'
+        '500':
+          description: 'An error occurred while processing the request'
+
+  /notification/read:
+    post:
+      summary: 'Marks a notification as read'
+      tags:
+        - 'Notification'
+      responses:
+        '200':
+          description: 'Notification was marked as read'
+        '500':
+          description: 'An error occurred while processing the request'
+
+definitions:
+  Student:
+    type: 'object'
+    properties:
+      _id:
+        type: 'string'
+        format: 'ObjectId'
+        example: 'ObjectId(a2d85a9c-a4ca-4a29-a62a-1b7c0d49851a)'
+      studentId:
+        type: 'string'
+        example: '17223456'
+      email:
+        type: 'string'
+        format: 'email'
+        example: '17223456@studentmail.ul.ie'
+      firstName:
+        type: 'string'
+        example: 'Sarah'
+      lastName:
+        type: 'string'
+        example: 'Student'
+      displayName:
+        type: 'string'
+        example: 'Sarah Student'
+      appRoleAssignmentId:
+        type: 'string'
+        example: 'nFrYosqkKUqmKht8DUmFGngCeKaZ9RZPu_cp23SjJ48'
+  Supervisor:
+    type: 'object'
+    properties:
+      _id:
+        type: 'string'
+        format: 'ObjectId'
+        example: 'ObjectId(f08481dc-6376-4b77-aae9-cc716fac949e)'
+      email:
+        type: 'string'
+        format: 'email'
+        example: 'a.supervisor@ul.ie'
+      firstName:
+        type: 'string'
+        example: 'Annette'
+      lastName:
+        type: 'string'
+        example: 'Supervisor'
+      displayName:
+        type: 'string'
+        example: 'Annette Supervisor'
+      appRoleAssignmentId:
+        type: 'string'
+        example: '3IGE8HZjd0uq6cxxb6yUntwnxRYZIy9PtPcCwr0klAI'
+  Coordinator:
+    type: 'object'
+    properties:
+      _id:
+        type: 'string'
+        format: 'ObjectId'
+        example: 'ObjectId(84cae2f1-651b-43d1-8056-470f590b1d9b)'
+      email:
+        type: 'string'
+        format: 'email'
+        example: 'j.coordinator@ul.ie'
+      firstName:
+        type: 'string'
+        example: 'John'
+      lastName:
+        type: 'string'
+        example: 'Coordinator'
+      displayName:
+        type: 'string'
+        example: 'John Coordinator'
+      appRoleAssignmentId:
+        type: 'string'
+        example: '8eLKhBtl0UOAVkcPWQsdmwE0NZQmmn5AqrdCzaI0OhE'
+  Topic:
+    type: 'object'
+    properties:
+      supervisor:
+        type: 'string'
+        format: 'ObjectId'
+      status:
+        type: 'string'
+        enum:
+          - 'draft'
+          - 'suggestion'
+          - 'active'
+          - 'archived'
+          - 'assigned'
+      title:
+        type: 'string'
+      description:
+        type: 'string'
+      tags:
+        type: 'array'
+        items:
+          type: 'string'
+          example: 'App Development'
+      additionalNotes:
+        type: 'string'
+      targetCourses:
+        type: 'array'
+        items:
+          type: 'string'
+      type:
+        type: 'string'
+        enum:
+          - 'regular'
+          - 'studentTopic'
+      ownerType:
+        type: 'string'
+        enum:
+          - 'supervisor'
+          - 'coordinator'
+  Proposal:
+    type: 'object'
+    properties:
+      title:
+        type: 'string'
+      description:
+        type: 'string'
+      additionalNotes:
+        type: 'string'
+      chooseMessage:
+        type: 'string'
+      student:
+        type: 'string'
+        format: 'ObjectId'
+      status:
+        type: 'string'
+        enum:
+          - 'draft'
+          - 'submitted'
+          - 'under_review'
+          - 'pending_edits'
+          - 'accepted'
+          - 'rejected'
+      topic:
+        type: 'string'
+        format: 'ObjectId'
+      type:
+        type: 'string'
+        enum:
+          - 'supervisorDefined'
+          - 'studentDefined'
+      supervisorMessage:
+        type: 'string'
+      environment:
+        type: 'string'
+      language:
+        type: 'string'
+
+  Tag:
+    type: 'object'
+    properties:
+      _id:
+        type: 'string'
+        format: 'ObjectId'
+        example: 'Web Development'
+      ancestors:
+        type: 'array'
+        items:
+          type: 'string'
+          format: 'ObjectId'
+        example: '[Development, Software Development]'
+      parent:
+        type: 'string'
+        format: 'ObjectId'
+        example: 'Software Development'
+
+  Notification:
+    type: 'object'
+    properties:
+      created_at:
+        type: 'string'
+        format: 'date-time'
+        example: '2021-03-09T15:20:18.569+00:00'
+      title:
+        type: 'string'
+        example: 'Test Notification'
+      path:
+        type: 'string'
+        example: '/test'
+      read:
+        type: 'boolean'
+        example: 'true'
+      read_at:
+        type: 'string'
+        format: 'date-time'
+        example: '2021-03-09T15:28:00.843+00:00'
+      user:
+        type: 'string'
+        format: 'ObjectId'
+        example: 'ObjectId(6047923240f27305b033a01b)'
+
+  Phase:
+    type: 'object'
+    properties:
+      _id:
+        type: 'number'
+        example: '1'
+      start_date:
+        type: 'string'
+        format: 'date-time'
+        example: '2021-03-22T22:11:43.503+00:00'
+      end_date:
+        type: 'string'
+        format: 'date-time'
+        example: '2021-03-19T23:59:51.112+00:00'
+
+  ApiResponse:
+    type: 'object'
+    properties:
+      code:
+        type: 'integer'
+        format: 'int32'
+      type:
+        type: 'string'
+      message:
+        type: 'string'
